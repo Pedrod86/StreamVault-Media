@@ -1,0 +1,108 @@
+{
+  "name": "Media",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title of the movie or show"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "movie",
+        "tv_show"
+      ],
+      "description": "Type of media"
+    },
+    "genre": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Genres"
+    },
+    "year": {
+      "type": "number",
+      "description": "Release year"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Rating out of 10"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Duration in minutes"
+    },
+    "description": {
+      "type": "string",
+      "description": "Plot summary"
+    },
+    "poster_url": {
+      "type": "string",
+      "description": "URL to poster image"
+    },
+    "backdrop_url": {
+      "type": "string",
+      "description": "URL to backdrop/banner image"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "URL to video file"
+    },
+    "cast": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Cast members"
+    },
+    "director": {
+      "type": "string",
+      "description": "Director name"
+    },
+    "content_rating": {
+      "type": "string",
+      "enum": [
+        "G",
+        "PG",
+        "PG-13",
+        "R",
+        "NC-17",
+        "TV-Y",
+        "TV-G",
+        "TV-PG",
+        "TV-14",
+        "TV-MA"
+      ],
+      "description": "Content rating"
+    },
+    "season_count": {
+      "type": "number",
+      "description": "Number of seasons (for TV shows)"
+    },
+    "episode_count": {
+      "type": "number",
+      "description": "Number of episodes (for TV shows)"
+    },
+    "studio": {
+      "type": "string",
+      "description": "Production studio"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags for categorization"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is featured on the homepage"
+    }
+  },
+  "required": [
+    "title",
+    "media_type"
+  ]
+}

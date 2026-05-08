@@ -1,0 +1,31 @@
+{
+  "name": "WatchHistory",
+  "type": "object",
+  "properties": {
+    "media_id": {
+      "type": "string",
+      "description": "Reference to the media item"
+    },
+    "progress_seconds": {
+      "type": "number",
+      "description": "Current playback position in seconds"
+    },
+    "total_seconds": {
+      "type": "number",
+      "description": "Total duration in seconds"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user has finished watching"
+    },
+    "last_watched": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the user last watched this"
+    }
+  },
+  "required": [
+    "media_id"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Watchlist",
+  "type": "object",
+  "properties": {
+    "media_id": {
+      "type": "string",
+      "description": "Reference to the media item"
+    }
+  },
+  "required": [
+    "media_id"
+  ]
+}
