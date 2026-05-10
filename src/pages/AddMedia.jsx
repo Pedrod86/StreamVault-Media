@@ -107,36 +107,36 @@ export default function AddMedia() {
           <h2 className="font-heading font-semibold text-foreground text-sm uppercase tracking-wider">Basic Info</h2>
           <div>
             <Label className="text-sm text-foreground">Title <span className="text-destructive">*</span></Label>
-            <Input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Enter title..." className="mt-1 bg-secondary border-border h-11" required />
+            <Input value={form.title} onChange={e => set('title', e.target.value)} placeholder="Enter title..." className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" required />
           </div>
           <div>
             <Label className="text-sm text-foreground">Description</Label>
-            <Textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Plot summary..." className="mt-1 bg-secondary border-border resize-none" rows={3} />
+            <Textarea value={form.description} onChange={e => set('description', e.target.value)} placeholder="Plot summary..." className="mt-1 bg-secondary border-border resize-none text-base md:text-sm" rows={3} />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm text-foreground">Year</Label>
-              <Input type="number" value={form.year} onChange={e => set('year', e.target.value)} placeholder="2024" className="mt-1 bg-secondary border-border h-11" min="1900" max="2030" />
+              <Input type="number" value={form.year} onChange={e => set('year', e.target.value)} placeholder="2024" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" min="1900" max="2030" />
             </div>
             <div>
               <Label className="text-sm text-foreground">Rating (0–10)</Label>
-              <Input type="number" value={form.rating} onChange={e => set('rating', e.target.value)} placeholder="8.5" className="mt-1 bg-secondary border-border h-11" min="0" max="10" step="0.1" />
+              <Input type="number" value={form.rating} onChange={e => set('rating', e.target.value)} placeholder="8.5" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" min="0" max="10" step="0.1" />
             </div>
             {isTV ? (
               <>
                 <div>
                   <Label className="text-sm text-foreground">Seasons</Label>
-                  <Input type="number" value={form.season_count} onChange={e => set('season_count', e.target.value)} placeholder="3" className="mt-1 bg-secondary border-border h-11" min="1" />
+                  <Input type="number" value={form.season_count} onChange={e => set('season_count', e.target.value)} placeholder="3" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" min="1" />
                 </div>
                 <div>
                   <Label className="text-sm text-foreground">Episodes</Label>
-                  <Input type="number" value={form.episode_count} onChange={e => set('episode_count', e.target.value)} placeholder="24" className="mt-1 bg-secondary border-border h-11" min="1" />
+                  <Input type="number" value={form.episode_count} onChange={e => set('episode_count', e.target.value)} placeholder="24" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" min="1" />
                 </div>
               </>
             ) : (
               <div>
                 <Label className="text-sm text-foreground">Duration (mins)</Label>
-                <Input type="number" value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)} placeholder="120" className="mt-1 bg-secondary border-border h-11" min="1" />
+                <Input type="number" value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)} placeholder="120" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" min="1" />
               </div>
             )}
             <div>
@@ -173,17 +173,17 @@ export default function AddMedia() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm text-foreground">Director</Label>
-              <Input value={form.director} onChange={e => set('director', e.target.value)} placeholder="Director name" className="mt-1 bg-secondary border-border h-11" />
+              <Input value={form.director} onChange={e => set('director', e.target.value)} placeholder="Director name" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" />
             </div>
             <div>
               <Label className="text-sm text-foreground">Studio</Label>
-              <Input value={form.studio} onChange={e => set('studio', e.target.value)} placeholder="Production studio" className="mt-1 bg-secondary border-border h-11" />
+              <Input value={form.studio} onChange={e => set('studio', e.target.value)} placeholder="Production studio" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" />
             </div>
           </div>
           <div>
             <Label className="text-sm text-foreground">Cast</Label>
             <div className="flex gap-2 mt-1">
-              <Input value={castInput} onChange={e => setCastInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCast())} placeholder="Actor name, press Enter" className="bg-secondary border-border h-11" />
+              <Input value={castInput} onChange={e => setCastInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCast())} placeholder="Actor name, press Enter" className="bg-secondary border-border h-11 text-base md:text-sm" />
               <Button type="button" variant="outline" size="icon" className="h-11 w-11 border-border shrink-0" onClick={addCast}><Plus className="w-4 h-4" /></Button>
             </div>
             {form.cast.length > 0 && (
@@ -204,15 +204,15 @@ export default function AddMedia() {
           <h2 className="font-heading font-semibold text-foreground text-sm uppercase tracking-wider">Images & URLs</h2>
           <div>
             <Label className="text-sm text-foreground">Poster URL</Label>
-            <Input value={form.poster_url} onChange={e => set('poster_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11" />
+            <Input value={form.poster_url} onChange={e => set('poster_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" />
           </div>
           <div>
             <Label className="text-sm text-foreground">Backdrop URL</Label>
-            <Input value={form.backdrop_url} onChange={e => set('backdrop_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11" />
+            <Input value={form.backdrop_url} onChange={e => set('backdrop_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" />
           </div>
           <div>
             <Label className="text-sm text-foreground">Video URL</Label>
-            <Input value={form.video_url} onChange={e => set('video_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11" />
+            <Input value={form.video_url} onChange={e => set('video_url', e.target.value)} placeholder="https://…" className="mt-1 bg-secondary border-border h-11 text-base md:text-sm" />
           </div>
         </div>
 
@@ -222,7 +222,7 @@ export default function AddMedia() {
           <div>
             <Label className="text-sm text-foreground">Tags</Label>
             <div className="flex gap-2 mt-1">
-              <Input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Tag, press Enter" className="bg-secondary border-border h-11" />
+              <Input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Tag, press Enter" className="bg-secondary border-border h-11 text-base md:text-sm" />
               <Button type="button" variant="outline" size="icon" className="h-11 w-11 border-border shrink-0" onClick={addTag}><Plus className="w-4 h-4" /></Button>
             </div>
             {form.tags.length > 0 && (

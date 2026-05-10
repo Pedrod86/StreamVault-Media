@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Film, Tv, BookmarkPlus } from 'lucide-react';
 
 const links = [
@@ -11,6 +11,16 @@ const links = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleTabPress = useCallback((e, to) => {
+    const active = location.pathname === to;
+    if (active) {
+      // Already on this tab — scroll to top
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location.pathname]);
 
   return (
     <nav
@@ -24,7 +34,8 @@ export default function BottomNav() {
             <Link
               key={to}
               to={to}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 select-none transition-colors ${
+              onClick={(e) => handleTabPress(e, to)}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] py-2 select-none transition-colors ${
                 active ? 'text-primary' : 'text-muted-foreground'
               }`}
             >

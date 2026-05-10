@@ -14,7 +14,7 @@ export default function GenreFilter({ selected, onChange }) {
           key={genre}
           variant={selected === genre ? 'default' : 'outline'}
           size="sm"
-          className={`shrink-0 rounded-full text-xs font-medium h-8 ${
+          className={`shrink-0 rounded-full text-xs font-medium h-11 md:h-8 px-4 ${
             selected === genre
               ? 'bg-primary text-primary-foreground'
               : 'border-border text-muted-foreground hover:text-foreground hover:bg-secondary'
