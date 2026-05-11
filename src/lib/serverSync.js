@@ -143,8 +143,8 @@ async function fetchEmbyLibrary(server) {
   let userId;
 
   // If no token but we have credentials, authenticate first
-  if (!token && server.username) {
-    const auth = await authenticateEmby(base, server.username, server.username /* fallback */);
+  if (!token && server.username && server.password) {
+    const auth = await authenticateEmby(base, server.username, server.password);
     token = auth.token;
     userId = auth.userId;
   }

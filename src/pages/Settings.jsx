@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { fetchServerLibrary } from '@/lib/serverSync';
@@ -72,19 +72,6 @@ export default function Settings() {
     const t = THEMES[selectedTheme];
     applyTheme(t.primary, t.accent);
   }, [selectedTheme]);
-
-  // Auto-sync interval runner
-  const intervalRef = useRef(null);
-  useEffect(() => {
-    const mins = parseInt(syncInterval, 10);
-    clearInterval(intervalRef.current);
-    if (mins > 0 && servers.length > 0) {
-      intervalRef.current = setInterval(() => {
-        servers.filter(s => s.server_type !== 'trakt').forEach(server => runSync(server));
-      }, mins * 60 * 1000);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [syncInterval, servers]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {

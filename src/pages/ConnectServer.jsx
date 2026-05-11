@@ -454,6 +454,9 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
         api_token: authData.AccessToken,
         server_name: serverName || `${server.name} Server`,
         auth_method: 'credentials',
+        // Store password so re-auth works if token expires
+        // (safe — MediaServer entity is user-private via RLS)
+        password,
       });
       return;
     }

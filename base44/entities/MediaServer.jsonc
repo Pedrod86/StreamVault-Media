@@ -20,6 +20,10 @@
       "type": "string",
       "description": "Username for credential login"
     },
+    "password": {
+      "type": "string",
+      "description": "Password for credential login (stored securely, user-private)"
+    },
     "api_token": {
       "type": "string",
       "description": "API token / access token"

@@ -3,12 +3,14 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { useAutoSync } from '@/hooks/useAutoSync';
 import Navbar from './Navbar';
 import BottomNav from './BottomNav';
 import PageTransition from './PageTransition';
 
 export default function AppLayout() {
   const location = useLocation();
+  useAutoSync();
 
   // Restore saved theme from settings
   const { data: settingsList = [] } = useQuery({
