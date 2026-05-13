@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { fetchServerLibrary } from '@/lib/serverSync';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 
 export default function SyncServerButton({ server }) {
   const queryClient = useQueryClient();
@@ -21,9 +21,9 @@ export default function SyncServerButton({ server }) {
       try {
         items = await fetchServerLibrary(server);
       } catch (err) {
-        const isCors = err.message === 'Failed to fetch' || err.name === 'TypeError';
+        const isCors = err.message === 'Failed to fetch' || err.name === 'TypeError' || err instanceof TypeError;
         if (isCors) {
-          throw new Error('Cannot reach server. If it\'s on your local network, ensure CORS is enabled in your Emby/Jellyfin settings, or that the server URL is accessible from this browser.');
+          throw new Error('CORS_BLOCKED');
         }
         throw err;
       }
@@ -97,13 +97,34 @@ export default function SyncServerButton({ server }) {
   }
 
   if (status === 'error') {
+    const isCors = errorMsg === 'CORS_BLOCKED';
     return (
-      <div className="flex flex-col gap-1 text-xs text-destructive font-medium max-w-[280px]">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-col gap-1.5 text-xs font-medium max-w-[320px]">
+        <div className="flex items-center gap-1.5 text-destructive">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-semibold">Sync failed</span>
+          <span className="font-semibold">{isCors ? 'CORS / Network blocked' : 'Sync failed'}</span>
         </div>
-        <span className="text-destructive/80 leading-snug">{errorMsg}</span>
+        {isCors ? (
+          <div className="text-muted-foreground leading-snug space-y-1">
+            <p>Your browser is blocking requests to the media server. To fix this:</p>
+            <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground/80">
+              <li>Open your <strong className="text-foreground">Emby/Jellyfin Dashboard</strong></li>
+              <li>Go to <strong className="text-foreground">Advanced → Networking</strong></li>
+              <li>Add <code className="bg-secondary px-1 rounded text-foreground">https://streamvault-now.base44.app</code> to <strong className="text-foreground">Known Proxies / CORS Origins</strong></li>
+              <li>Make sure your server URL uses <strong className="text-foreground">https://</strong> if your server has SSL, or the app must be opened over <strong className="text-foreground">http://</strong></li>
+            </ol>
+            <a
+              href="https://jellyfin.org/docs/general/networking/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
+            >
+              <ExternalLink className="w-3 h-3" /> Networking docs
+            </a>
+          </div>
+        ) : (
+          <span className="text-destructive/80 leading-snug">{errorMsg}</span>
+        )}
       </div>
     );
   }

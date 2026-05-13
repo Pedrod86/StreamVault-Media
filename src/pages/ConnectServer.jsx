@@ -429,22 +429,31 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
   const [token, setToken] = useState('');
   const [serverName, setServerName] = useState('');
 
+  const [authError, setAuthError] = useState('');
+
   const handleCredentials = async (e) => {
     e.preventDefault();
+    setAuthError('');
     // For Emby/Jellyfin, authenticate first to obtain an API token
     if (server.id === 'emby' || server.id === 'jellyfin') {
       const base = url.replace(/\/$/, '');
-      const authRes = await fetch(`${base}/Users/AuthenticateByName`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Emby-Authorization': 'MediaBrowser Client="StreamVault", Device="Browser", DeviceId="streamvault", Version="1.0.0"',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ Username: username, Pw: password }),
-      });
+      let authRes;
+      try {
+        authRes = await fetch(`${base}/Users/AuthenticateByName`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Emby-Authorization': 'MediaBrowser Client="StreamVault", Device="Browser", DeviceId="streamvault", Version="1.0.0"',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ Username: username, Pw: password }),
+        });
+      } catch (err) {
+        setAuthError('Cannot reach your server. This is usually a CORS issue — your browser is blocking the request. Go to your Emby/Jellyfin Dashboard → Advanced → Networking and add this app\'s domain to the allowed CORS origins. Also ensure your server URL is reachable from this device.');
+        return;
+      }
       if (!authRes.ok) {
-        alert('Authentication failed. Check your username/password and server URL.');
+        setAuthError('Authentication failed. Double-check your username, password, and server URL (include port, e.g. http://192.168.1.10:8096).');
         return;
       }
       const authData = await authRes.json();
@@ -454,8 +463,6 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
         api_token: authData.AccessToken,
         server_name: serverName || `${server.name} Server`,
         auth_method: 'credentials',
-        // Store password so re-auth works if token expires
-        // (safe — MediaServer entity is user-private via RLS)
         password,
       });
       return;
@@ -551,6 +558,12 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
                   required
                 />
               </div>
+              {authError && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive leading-relaxed">
+                  <p className="font-semibold mb-1">Connection failed</p>
+                  <p>{authError}</p>
+                </div>
+              )}
               <Button type="submit" className={`w-full h-11 rounded-xl font-semibold bg-gradient-to-r ${server.color} text-white border-0`} disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : `Connect to ${server.name}`}
               </Button>
