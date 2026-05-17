@@ -15,7 +15,8 @@ async function fetchPlexLibrary(server) {
     `${base}/library/sections?X-Plex-Token=${token}`,
     { headers }
   );
-  const sectionsJson = await sectionsRes.json();
+  if (!sectionsRes.ok) throw new Error(`Plex auth failed (${sectionsRes.status}). Check your token and server URL.`);
+  const sectionsJson = await safeJson(sectionsRes);
   const sections = sectionsJson?.MediaContainer?.Directory || [];
 
   const items = [];
@@ -25,7 +26,7 @@ async function fetchPlexLibrary(server) {
       `${base}/library/sections/${section.key}/all?X-Plex-Token=${token}`,
       { headers }
     );
-    const json = await res.json();
+    const json = await safeJson(res);
     const list = json?.MediaContainer?.Metadata || [];
     for (const item of list) {
       items.push(mapPlexItem(item, base, token, section.type));
@@ -63,6 +64,15 @@ function mapPlexItem(item, base, token, sectionType) {
 
 // ─── JELLYFIN ─────────────────────────────────────────────────────────────────
 
+async function safeJson(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Server returned non-JSON response (status ${res.status}). Check the server URL includes http:// or https:// and the correct port.`);
+  }
+}
+
 async function fetchJellyfinLibrary(server) {
   const base = server.server_url.replace(/\/$/, '');
   const token = server.api_token;
@@ -74,7 +84,8 @@ async function fetchJellyfinLibrary(server) {
 
   // Get user id first
   const userRes = await fetch(`${base}/Users/Me`, { headers });
-  const user = await userRes.json();
+  if (!userRes.ok) throw new Error(`Jellyfin auth failed (${userRes.status}). Check your API key and server URL.`);
+  const user = await safeJson(userRes);
   const userId = user.Id;
 
   // Get all items (movies + series)
@@ -82,7 +93,8 @@ async function fetchJellyfinLibrary(server) {
     `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount&Limit=500`,
     { headers }
   );
-  const json = await res.json();
+  if (!res.ok) throw new Error(`Jellyfin library fetch failed (${res.status}).`);
+  const json = await safeJson(res);
   return (json.Items || []).map(item => mapJellyfinItem(item, base, token));
 }
 
@@ -159,7 +171,7 @@ async function fetchEmbyLibrary(server) {
   if (!userId) {
     const userRes = await fetch(`${base}/Users/Me`, { headers });
     if (!userRes.ok) throw new Error('Could not authenticate with Emby server.');
-    const user = await userRes.json();
+    const user = await safeJson(userRes);
     userId = user.Id;
   }
 
@@ -167,7 +179,8 @@ async function fetchEmbyLibrary(server) {
     `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,MediaSources&Limit=500`,
     { headers }
   );
-  const json = await res.json();
+  if (!res.ok) throw new Error(`Emby library fetch failed (${res.status}).`);
+  const json = await safeJson(res);
   return (json.Items || []).map(item => mapEmbyItem(item, base, token));
 }
 
@@ -209,7 +222,18 @@ function mapEmbyItem(item, base, token) {
 
 // ─── PUBLIC API ───────────────────────────────────────────────────────────────
 
+function normaliseUrl(url) {
+  if (!url) return url;
+  url = url.trim();
+  if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+  return url.replace(/\/$/, '');
+}
+
 export async function fetchServerLibrary(server) {
+  // Normalise URL so bare IPs/hostnames work
+  if (server.server_url) {
+    server = { ...server, server_url: normaliseUrl(server.server_url) };
+  }
   // _pingOnly: just check reachability, don't return full library
   if (server._pingOnly) {
     const base = server.server_url?.replace(/\/$/, '');

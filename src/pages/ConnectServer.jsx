@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, Loader2, Server, Key, User, Globe, CheckCircle2, ExternalLink, Plus, Trash2, Wifi } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SyncServerButton from '@/components/server/SyncServerButton';
+import ServerHealthBadge from '@/components/server/ServerHealthBadge';
 
 const SERVERS = [
   {
@@ -226,10 +227,14 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
       <div className="flex-1 min-w-0">
         <p className={`font-heading font-semibold ${meta.text}`}>{srv.server_name || `${meta.name}`}</p>
         <p className="text-muted-foreground text-xs truncate">{srv.server_url || (isTrakt ? 'trakt.tv' : 'No URL set')}</p>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="flex items-center gap-1 text-xs text-green-400">
-            <Wifi className="w-3 h-3" /> Connected
-          </span>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {isTrakt ? (
+            <span className="flex items-center gap-1 text-xs text-green-400">
+              <Wifi className="w-3 h-3" /> Connected
+            </span>
+          ) : (
+            <ServerHealthBadge server={srv} />
+          )}
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground capitalize">
             {srv.auth_method === 'oauth_pin' ? 'OAuth PIN' : srv.auth_method === 'api_key' ? 'API Key' : srv.auth_method === 'token' ? 'API Token' : 'Credentials'}
