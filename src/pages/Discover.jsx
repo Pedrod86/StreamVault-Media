@@ -44,7 +44,7 @@ Return up to 12 results. For each result provide:
 - description: 1-2 sentence plot summary
 - source: "youtube", "archive", or "other"
 - embed_url: the DIRECT embeddable URL:
-  * For YouTube: use https://www.youtube.com/embed/VIDEO_ID format
+  * For YouTube: use https://www.youtube-nocookie.com/embed/VIDEO_ID format (NOT youtube.com)
   * For Internet Archive: use https://archive.org/embed/IDENTIFIER format
   * For other sources: direct embed URL
 - watch_url: the regular watch page URL (for "open in new tab")
