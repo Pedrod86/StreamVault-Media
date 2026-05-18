@@ -1,15 +1,20 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 
-const GENRES = [
-  'All', 'Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi',
+const DEFAULT_GENRES = [
+  'Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi',
   'Thriller', 'Romance', 'Documentary', 'Animation', 'Fantasy', 'Adventure'
 ];
 
-export default function GenreFilter({ selected, onChange }) {
+/**
+ * genres: optional array of strings to show instead of defaults.
+ *         If provided, these replace the hardcoded list (useful for dynamic Xtream categories).
+ */
+export default function GenreFilter({ selected, onChange, genres }) {
+  const list = ['All', ...(genres && genres.length ? genres : DEFAULT_GENRES)];
   return (
     <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-      {GENRES.map((genre) => (
+      {list.map((genre) => (
         <Button
           key={genre}
           variant={selected === genre ? 'default' : 'outline'}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import MediaGrid from '../components/media/MediaGrid';
@@ -31,6 +31,13 @@ export default function Movies() {
     gcTime: 30 * 60 * 1000,
   });
 
+  // Build genre list dynamically from actual data (captures Xtream categories too)
+  const allGenres = useMemo(() => {
+    const set = new Set();
+    movies.forEach(m => m.genre?.forEach(g => g && set.add(g)));
+    return [...set].sort();
+  }, [movies]);
+
   let filtered = genre === 'All' ? movies : movies.filter(m => m.genre?.includes(genre));
 
   if (sortBy === 'rating') {
@@ -59,7 +66,7 @@ export default function Movies() {
         </Select>
       </div>
 
-      <GenreFilter selected={genre} onChange={setGenre} />
+      <GenreFilter selected={genre} onChange={setGenre} genres={allGenres} />
 
       <div className="mt-6">
         {isLoading ? (
