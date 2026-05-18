@@ -4,7 +4,7 @@ import { X, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import VideoPlayer from './VideoPlayer';
 
-export default function TrailerPlayer({ media, onClose }) {
+export default function TrailerPlayer({ media, onClose, startAt = 0, onProgress }) {
   const [trailerUrl, setTrailerUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -47,7 +47,7 @@ If you cannot find one, set youtube_id to null.`,
 
   // Direct video: use the full-featured VideoPlayer
   if (trailerUrl?.type === 'direct') {
-    return <VideoPlayer src={trailerUrl.url} title={media.title} onClose={onClose} />;
+    return <VideoPlayer src={trailerUrl.url} title={media.title} onClose={onClose} startAt={startAt} onProgress={onProgress} />;
   }
 
   // YouTube embed or loading/error state

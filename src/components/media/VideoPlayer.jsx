@@ -9,10 +9,11 @@ function formatTime(secs) {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function VideoPlayer({ src, title, onClose, onProgress }) {
+export default function VideoPlayer({ src, title, onClose, onProgress, startAt = 0 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideControlsTimer = useRef(null);
+  const lastSavedRef = useRef(0);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -82,26 +83,42 @@ export default function VideoPlayer({ src, title, onClose, onProgress }) {
     }
   };
 
+  // Seek to resume position once metadata is ready
+  const handleLoadedMetadata = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    setDuration(v.duration || 0);
+    if (startAt > 0 && startAt < v.duration - 5) {
+      v.currentTime = startAt;
+    }
+  };
+
+  const saveProgress = useCallback((completed = false) => {
+    const v = videoRef.current;
+    if (!v || !onProgress || v.currentTime < 2) return;
+    const now = Math.round(v.currentTime);
+    if (!completed && Math.abs(now - lastSavedRef.current) < 5) return;
+    lastSavedRef.current = now;
+    onProgress({ progressSeconds: now, totalSeconds: Math.round(v.duration), completed });
+  }, [onProgress]);
+
   const handleTimeUpdate = () => {
     const v = videoRef.current;
     if (!v) return;
     setCurrentTime(v.currentTime);
-    // Update buffered
     if (v.buffered.length > 0) {
       setBuffered(v.buffered.end(v.buffered.length - 1));
     }
-    // Report progress every 10s
-    if (onProgress && Math.round(v.currentTime) % 10 === 0 && v.currentTime > 5) {
-      onProgress({ progressSeconds: Math.round(v.currentTime), totalSeconds: Math.round(v.duration), completed: false });
+    // Save every 10s
+    if (Math.round(v.currentTime) % 10 === 0 && v.currentTime > 5) {
+      saveProgress(false);
     }
   };
 
   const handleEnded = () => {
     setPlaying(false);
     setShowControls(true);
-    if (onProgress) {
-      onProgress({ progressSeconds: Math.round(duration), totalSeconds: Math.round(duration), completed: true });
-    }
+    saveProgress(true);
   };
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -115,9 +132,9 @@ export default function VideoPlayer({ src, title, onClose, onProgress }) {
         src={src}
         className="w-full h-full object-contain"
         onPlay={() => setPlaying(true)}
-        onPause={() => { setPlaying(false); setShowControls(true); }}
+        onPause={() => { setPlaying(false); setShowControls(true); saveProgress(false); }}
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={() => setDuration(videoRef.current?.duration || 0)}
+        onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
         onClick={togglePlay}
         onMouseMove={resetHideTimer}
@@ -134,7 +151,7 @@ export default function VideoPlayer({ src, title, onClose, onProgress }) {
           <h3 className="text-white font-semibold text-sm truncate max-w-[80%]">{title}</h3>
           <button
             className="text-white hover:text-white/70 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10"
-            onClick={onClose}
+            onClick={() => { saveProgress(false); onClose(); }}
           >
             <X className="w-5 h-5" />
           </button>

@@ -4,9 +4,9 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, BookmarkPlus, BookmarkCheck, Star, Clock, Calendar, Users, Clapperboard, Tv, ArrowLeft, FolderPlus } from 'lucide-react';
+import { Play, BookmarkPlus, BookmarkCheck, Star, Clock, Calendar, Users, Clapperboard, Tv, ArrowLeft, FolderPlus, RotateCcw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import MediaRow from '../components/media/MediaRow';
 import TrailerPlayer from '../components/media/TrailerPlayer';
 import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
@@ -18,6 +18,8 @@ export default function MediaDetail() {
   const queryClient = useQueryClient();
   const [showPlayer, setShowPlayer] = useState(false);
   const [showCollections, setShowCollections] = useState(false);
+  const [resumePrompt, setResumePrompt] = useState(false);
+  const [startAt, setStartAt] = useState(0);
 
   const saveProgress = useMutation({
     mutationFn: async ({ progressSeconds, totalSeconds, completed }) => {
@@ -47,6 +49,14 @@ export default function MediaDetail() {
     },
     enabled: !!mediaId,
   });
+
+  const { data: watchHistory = [] } = useQuery({
+    queryKey: ['watchHistory'],
+    queryFn: () => base44.entities.WatchHistory.list('-last_watched', 500),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const historyEntry = watchHistory.find(h => h.media_id === mediaId && !h.completed && h.progress_seconds > 30);
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ['watchlist'],
@@ -96,6 +106,22 @@ export default function MediaDetail() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
   });
 
+  const handlePlay = () => {
+    if (media?.video_url && historyEntry?.progress_seconds > 30) {
+      setResumePrompt(true);
+    } else {
+      setStartAt(0);
+      setShowPlayer(true);
+    }
+  };
+
+  const formatTime = (secs) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
   if (isLoading || !media) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -139,8 +165,48 @@ export default function MediaDetail() {
 
         {/* Trailer / video player overlay */}
         {showPlayer && (
-          <TrailerPlayer media={media} onClose={() => setShowPlayer(false)} />
+          <TrailerPlayer media={media} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />
         )}
+
+        {/* Resume prompt */}
+        <AnimatePresence>
+          {resumePrompt && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center"
+              >
+                <RotateCcw className="w-10 h-10 text-primary mx-auto mb-3" />
+                <h3 className="font-heading font-bold text-lg text-foreground mb-1">Resume watching?</h3>
+                <p className="text-muted-foreground text-sm mb-5">
+                  You left off at <span className="text-foreground font-semibold">{formatTime(historyEntry.progress_seconds)}</span>
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-border rounded-xl"
+                    onClick={() => { setResumePrompt(false); setStartAt(0); setShowPlayer(true); }}
+                  >
+                    Start Over
+                  </Button>
+                  <Button
+                    className="flex-1 bg-primary hover:bg-primary/90 rounded-xl gap-2"
+                    onClick={() => { setResumePrompt(false); setStartAt(historyEntry.progress_seconds); setShowPlayer(true); }}
+                  >
+                    <Play className="w-4 h-4 fill-current" /> Resume
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Content */}
@@ -221,7 +287,7 @@ export default function MediaDetail() {
             <div className="flex gap-3 mb-8">
               <Button
                 className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-11 px-6 rounded-xl font-semibold select-none"
-                onClick={() => setShowPlayer(true)}
+                onClick={handlePlay}
               >
                 <Play className="w-4 h-4 fill-current" />
                 {media.video_url ? 'Play' : 'Watch Trailer'}
