@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Server, Key, User, Globe, CheckCircle2, ExternalLin
 import { motion } from 'framer-motion';
 import SyncServerButton from '@/components/server/SyncServerButton';
 import ServerHealthBadge from '@/components/server/ServerHealthBadge';
+import XtreamForm, { XTREAM } from '@/components/server/XtreamForm';
 
 const SERVERS = [
   {
@@ -107,6 +108,16 @@ export default function ConnectServer() {
     );
   }
 
+  if (adding && selectedServer === 'xtream') {
+    return (
+      <XtreamForm
+        onBack={() => setSelectedServer(null)}
+        onSave={(data) => saveMutation.mutate({ ...data, server_type: 'xtream' })}
+        isSaving={saveMutation.isPending}
+      />
+    );
+  }
+
   if (adding && selectedServer === 'trakt') {
     return (
       <TraktForm
@@ -132,7 +143,7 @@ export default function ConnectServer() {
     return <ServerPicker onSelect={setSelectedServer} onBack={() => setAdding(false)} />;
   }
 
-  const mediaServers = connectedServers.filter(s => s.server_type !== 'trakt');
+  const mediaServers = connectedServers.filter(s => !['trakt'].includes(s.server_type));
   const traktConnections = connectedServers.filter(s => s.server_type === 'trakt');
 
   // Main servers list view
@@ -142,7 +153,7 @@ export default function ConnectServer() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-foreground">Connections</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage Plex, Emby, Jellyfin & Trakt connections</p>
+          <p className="text-muted-foreground text-sm mt-1">Manage Plex, Emby, Jellyfin, Xtream IPTV & Trakt connections</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90 rounded-xl gap-2" onClick={() => setAdding(true)}>
           <Plus className="w-4 h-4" /> Add Server
@@ -165,7 +176,7 @@ export default function ConnectServer() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mediaServers.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
+            {mediaServers.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
           </div>
         )}
       </div>
@@ -193,7 +204,7 @@ export default function ConnectServer() {
           </motion.button>
         ) : (
           <div className="space-y-3">
-            {traktConnections.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
+            {traktConnections.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
             <Button variant="outline" size="sm" className="border-border rounded-lg gap-1.5 text-muted-foreground" onClick={() => { setSelectedServer('trakt'); setAdding(true); }}>
               <Plus className="w-3.5 h-3.5" /> Add Another Trakt Account
             </Button>
@@ -201,6 +212,15 @@ export default function ConnectServer() {
         )}
       </div>
     </div>
+  );
+}
+
+function IptvIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+      <polyline points="17 2 12 7 7 2"/>
+    </svg>
   );
 }
 
@@ -215,6 +235,7 @@ function ActivityIcon() {
 function ServerCard({ srv, allMeta, onDelete, deleting }) {
   const meta = allMeta.find(s => s.id === srv.server_type) || allMeta[0];
   const isTrakt = srv.server_type === 'trakt';
+  const isXtream = srv.server_type === 'xtream';
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -222,7 +243,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
       className={`flex items-center gap-4 p-4 rounded-xl border ${meta.bg}`}
     >
       <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shadow-md shrink-0`}>
-        {isTrakt ? <ActivityIcon /> : <Server className="w-5 h-5 text-white" />}
+        {isTrakt ? <ActivityIcon /> : isXtream ? <IptvIcon /> : <Server className="w-5 h-5 text-white" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className={`font-heading font-semibold ${meta.text}`}>{srv.server_name || `${meta.name}`}</p>
@@ -243,6 +264,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {!isTrakt && <SyncServerButton server={srv} />}
+
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete} disabled={deleting}>
           <Trash2 className="w-4 h-4" />
         </Button>
@@ -265,6 +287,20 @@ function ServerPicker({ onSelect, onBack }) {
             <p className="text-muted-foreground text-sm">Choose a platform to connect</p>
           </div>
         </div>
+
+        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">IPTV</p>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onSelect('xtream')}
+          className={`w-full flex items-center gap-4 p-5 rounded-xl border ${XTREAM.bg} transition-all text-left mb-6`}
+        >
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${XTREAM.color} flex items-center justify-center shadow-lg`}>
+            <IptvIcon />
+          </div>
+          <div className="flex-1">
+            <p className={`font-heading font-bold ${XTREAM.text}`}>{XTREAM.name}</p>
+            <p className="text-muted-foreground text-sm">{XTREAM.description}</p>
+          </div>
+          <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+        </motion.button>
 
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Media Servers</p>
         <div className="space-y-3 mb-6">

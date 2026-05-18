@@ -220,6 +220,63 @@ function mapEmbyItem(item, base, token) {
   };
 }
 
+// ─── XTREAM CODES ─────────────────────────────────────────────────────────────
+
+async function fetchXtreamLibrary(server) {
+  const base = server.server_url.replace(/\/$/, '');
+  const u = encodeURIComponent(server.username);
+  const p = encodeURIComponent(server.password);
+  const apiBase = `${base}/player_api.php?username=${u}&password=${p}`;
+
+  // Fetch VOD (movies) and Series in parallel
+  const [vodRes, seriesRes] = await Promise.all([
+    fetch(`${apiBase}&action=get_vod_streams`),
+    fetch(`${apiBase}&action=get_series`),
+  ]);
+
+  const [vodList, seriesList] = await Promise.all([
+    vodRes.ok ? vodRes.json().catch(() => []) : [],
+    seriesRes.ok ? seriesRes.json().catch(() => []) : [],
+  ]);
+
+  const items = [];
+
+  for (const v of (Array.isArray(vodList) ? vodList : [])) {
+    const streamUrl = `${base}/movie/${server.username}/${server.password}/${v.stream_id}.${v.container_extension || 'mp4'}`;
+    items.push({
+      title: v.name || v.stream_id,
+      media_type: 'movie',
+      description: v.plot || '',
+      year: v.year ? Number(v.year) : undefined,
+      rating: v.rating ? parseFloat(v.rating) : undefined,
+      duration_minutes: v.duration_secs ? Math.round(v.duration_secs / 60) : undefined,
+      poster_url: v.stream_icon || undefined,
+      genre: v.genre ? v.genre.split(',').map(g => g.trim()).filter(Boolean) : [],
+      director: v.director || undefined,
+      cast: v.cast ? v.cast.split(',').map(c => c.trim()).filter(Boolean).slice(0, 8) : [],
+      video_url: streamUrl,
+      tags: ['xtream', 'iptv'],
+    });
+  }
+
+  for (const s of (Array.isArray(seriesList) ? seriesList : [])) {
+    items.push({
+      title: s.name || s.series_id,
+      media_type: 'tv_show',
+      description: s.plot || '',
+      year: s.year ? Number(s.year) : undefined,
+      rating: s.rating ? parseFloat(s.rating) : undefined,
+      poster_url: s.cover || undefined,
+      genre: s.genre ? s.genre.split(',').map(g => g.trim()).filter(Boolean) : [],
+      director: s.director || undefined,
+      cast: s.cast ? s.cast.split(',').map(c => c.trim()).filter(Boolean).slice(0, 8) : [],
+      tags: ['xtream', 'iptv'],
+    });
+  }
+
+  return items;
+}
+
 // ─── PUBLIC API ───────────────────────────────────────────────────────────────
 
 function normaliseUrl(url) {
@@ -254,6 +311,8 @@ export async function fetchServerLibrary(server) {
       return fetchJellyfinLibrary(server);
     case 'emby':
       return fetchEmbyLibrary(server);
+    case 'xtream':
+      return fetchXtreamLibrary(server);
     default:
       throw new Error(`Unsupported server type: ${server.server_type}`);
   }

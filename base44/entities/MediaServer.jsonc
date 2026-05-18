@@ -8,7 +8,8 @@
         "plex",
         "emby",
         "jellyfin",
-        "trakt"
+        "trakt",
+        "xtream"
       ],
       "description": "Type of media server or service"
     },
