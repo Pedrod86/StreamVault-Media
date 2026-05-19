@@ -24,7 +24,16 @@ Deno.serve(async (req) => {
     const timeout = setTimeout(() => controller.abort(), 15000);
     let res;
     try {
-      res = await fetch(url, { ...fetchOptions, signal: controller.signal });
+      res = await fetch(url, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
+      // Follow redirects manually (up to 10 hops) to avoid Deno's redirect limit errors
+      let redirectCount = 0;
+      while ((res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) && redirectCount < 10) {
+        const location = res.headers.get('location');
+        if (!location) break;
+        const nextUrl = location.startsWith('http') ? location : new URL(location, url).toString();
+        res = await fetch(nextUrl, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
+        redirectCount++;
+      }
     } finally {
       clearTimeout(timeout);
     }
