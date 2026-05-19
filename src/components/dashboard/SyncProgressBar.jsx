@@ -29,29 +29,39 @@ export default function SyncProgressBar() {
     setErrorMsg('');
 
     try {
-      // Fetch existing to deduplicate
       const existing = await base44.entities.Media.list('-created_date', 2000);
       const existingMap = new Map(existing.map(m => [m.title.toLowerCase().trim(), m]));
 
-      // Gather items from all servers
-      let allItems = [];
+      let totalCreated = 0;
+      let totalUpdated = 0;
+      let clientItems = []; // items from non-Emby servers
+
       for (let si = 0; si < syncableServers.length; si++) {
         const server = syncableServers[si];
         setLabel(`Fetching from ${server.server_name || server.server_type}…`);
         try {
-          const items = await fetchServerLibrary(server);
-          allItems = allItems.concat(items);
+          const result = await fetchServerLibrary(server);
+
+          if (result?._serverSideSync) {
+            // Emby: already synced server-side, just accumulate counts
+            totalCreated += result.created || 0;
+            totalUpdated += result.updated || 0;
+            setLabel(`Emby: ${result.created || 0} new, ${result.fetched || 0} scanned`);
+          } else if (Array.isArray(result)) {
+            clientItems = clientItems.concat(result);
+          }
         } catch (e) {
           console.warn(`Sync skipped server ${server.server_name}: ${e.message}`);
         }
         setProgress(Math.round(((si + 1) / syncableServers.length) * 30));
       }
 
-      // Split new vs update
+      // Handle client-side items (Plex, Jellyfin, Xtream)
       const newItems = [];
       const updatePromises = [];
-      for (const item of allItems) {
-        const key = item.title.toLowerCase().trim();
+      for (const item of clientItems) {
+        const key = item.title?.toLowerCase().trim();
+        if (!key) continue;
         const existingItem = existingMap.get(key);
         if (existingItem) {
           if (item.video_url && !existingItem.video_url) {
@@ -63,21 +73,25 @@ export default function SyncProgressBar() {
       }
 
       if (updatePromises.length) await Promise.all(updatePromises);
+      totalUpdated += updatePromises.length;
 
-      // Bulk create in batches
       const BATCH = 50;
-      let created = 0;
       for (let i = 0; i < newItems.length; i += BATCH) {
         await base44.entities.Media.bulkCreate(newItems.slice(i, i + BATCH));
-        created += BATCH;
-        const pct = 30 + Math.round((Math.min(created, newItems.length) / Math.max(newItems.length, 1)) * 70);
+        totalCreated += Math.min(BATCH, newItems.length - i);
+        const pct = 30 + Math.round((Math.min(i + BATCH, newItems.length) / Math.max(newItems.length, 1)) * 70);
         setProgress(Math.min(pct, 99));
-        setLabel(`Importing… ${Math.min(created, newItems.length)} / ${newItems.length}`);
+        setLabel(`Importing… ${Math.min(i + BATCH, newItems.length)} / ${newItems.length}`);
       }
 
       setProgress(100);
-      const total = newItems.length;
-      setLabel(total > 0 ? `${total} new item${total !== 1 ? 's' : ''} imported` : updatePromises.length > 0 ? `${updatePromises.length} items updated` : 'Library is up to date');
+      setLabel(
+        totalCreated > 0
+          ? `${totalCreated} new item${totalCreated !== 1 ? 's' : ''} imported`
+          : totalUpdated > 0
+          ? `${totalUpdated} items updated`
+          : 'Library is up to date'
+      );
       setStatus('done');
       queryClient.invalidateQueries({ queryKey: ['media'] });
       setTimeout(() => { setStatus('idle'); setProgress(0); }, 5000);

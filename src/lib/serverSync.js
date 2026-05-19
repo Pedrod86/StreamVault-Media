@@ -128,36 +128,12 @@ function mapJellyfinItem(item, base, token) {
 // ─── EMBY ─────────────────────────────────────────────────────────────────────
 
 async function fetchEmbyLibrary(server) {
-  const base = server.server_url.replace(/\/$/, '');
-  const token = server.api_token;
-
-  if (!token) throw new Error('No API token available for Emby. Please reconnect with an API key.');
-
-  const authHeaders = { 'X-Emby-Token': token };
-
-  // /Users/Me requires session auth — use /Users list instead and pick the admin/first user
-  const users = await proxyFetch(`${base}/Users`, authHeaders);
-  const userList = Array.isArray(users) ? users : (users?.Items || []);
-  if (!userList.length) throw new Error('Could not retrieve users from Emby server. Check your API key.');
-  const user = userList.find(u => u.Policy?.IsAdministrator) || userList[0];
-  const userId = user.Id;
-
-  const PAGE_SIZE = 500;
-  const allItems = [];
-  let startIndex = 0;
-
-  while (true) {
-    const json = await proxyFetch(
-      `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount&Limit=${PAGE_SIZE}&StartIndex=${startIndex}`,
-      authHeaders
-    );
-    const items = json.Items || [];
-    allItems.push(...items.map(item => mapEmbyItem(item, base, token)));
-    if (allItems.length >= (json.TotalRecordCount || 0) || items.length < PAGE_SIZE) break;
-    startIndex += PAGE_SIZE;
-  }
-
-  return allItems;
+  // Delegate entirely to the server-side embySync function to handle large
+  // libraries (47k+ items) without browser-side connection timeouts.
+  const res = await base44.functions.invoke('embySync', { server });
+  if (res.data?.error) throw new Error(res.data.error);
+  // Return a sentinel so callers know sync was handled server-side
+  return { _serverSideSync: true, ...res.data };
 }
 
 // ─── XTREAM CODES ─────────────────────────────────────────────────────────────

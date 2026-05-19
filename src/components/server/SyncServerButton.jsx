@@ -17,13 +17,20 @@ export default function SyncServerButton({ server }) {
       setErrorMsg('');
 
       // 1. Fetch all items from the media server
-      let items;
+      let result;
       try {
-        items = await fetchServerLibrary(server);
+        result = await fetchServerLibrary(server);
       } catch (err) {
         throw new Error(err.message || 'Sync failed. Check your server credentials and URL.');
       }
 
+      // Emby: synced entirely server-side
+      if (result?._serverSideSync) {
+        setCount(result.created || 0);
+        return result.created || 0;
+      }
+
+      const items = Array.isArray(result) ? result : [];
       if (!items.length) {
         setCount(0);
         return 0;
@@ -37,7 +44,8 @@ export default function SyncServerButton({ server }) {
       const newItems = [];
       const updatePromises = [];
       for (const item of items) {
-        const key = item.title.toLowerCase().trim();
+        const key = item.title?.toLowerCase().trim();
+        if (!key) continue;
         const existingItem = existingMap.get(key);
         if (existingItem) {
           if (item.video_url && !existingItem.video_url) {
@@ -64,7 +72,7 @@ export default function SyncServerButton({ server }) {
         const batch = newItems.slice(i, i + BATCH);
         await base44.entities.Media.bulkCreate(batch);
         created += batch.length;
-        setCount(created); // live progress
+        setCount(created);
       }
 
       return created;
