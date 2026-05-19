@@ -20,7 +20,14 @@ Deno.serve(async (req) => {
       fetchOptions.headers['Content-Type'] = 'application/json';
     }
 
-    const res = await fetch(url, fetchOptions);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    let res;
+    try {
+      res = await fetch(url, { ...fetchOptions, signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     const text = await res.text();
 
     let data;
@@ -32,6 +39,9 @@ Deno.serve(async (req) => {
 
     return Response.json({ status: res.status, ok: res.ok, data });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    const msg = error.name === 'AbortError'
+      ? 'Request timed out — server unreachable or too slow'
+      : error.message;
+    return Response.json({ error: msg }, { status: 500 });
   }
 });
