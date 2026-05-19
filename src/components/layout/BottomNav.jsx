@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Film, Tv, BookmarkPlus, LayoutGrid } from 'lucide-react';
+import { Home, Film, Tv, BookmarkPlus, Database } from 'lucide-react';
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/movies', label: 'Movies', icon: Film },
+  { to: '/emby', label: 'Emby', icon: Database },
   { to: '/shows', label: 'TV Shows', icon: Tv },
-  { to: '/tv-guide', label: 'TV Guide', icon: LayoutGrid },
   { to: '/watchlist', label: 'My List', icon: BookmarkPlus },
 ];
 
