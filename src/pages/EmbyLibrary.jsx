@@ -17,11 +17,31 @@ function buildStreamUrl(base, itemId, token) {
   return `${base}/Videos/${itemId}/stream?api_key=${token}&Static=true`;
 }
 
+// Try direct browser fetch first (works for local/LAN servers).
+// Falls back to mediaProxy only if CORS blocks the direct request.
+async function directFetch(url, headers = {}) {
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 async function proxyFetch(url, headers = {}) {
   const res = await base44.functions.invoke('mediaProxy', { url, headers });
   if (res.data?.error) throw new Error(res.data.error);
   if (!res.data.ok) throw new Error(`HTTP ${res.data.status}`);
   return res.data.data;
+}
+
+async function embyFetch(url, headers = {}) {
+  try {
+    return await directFetch(url, headers);
+  } catch (err) {
+    // CORS or network error — fall back to server-side proxy
+    if (err.name === 'TypeError' || err.message?.includes('fetch') || err.name === 'AbortError') {
+      return proxyFetch(url, headers);
+    }
+    throw err;
+  }
 }
 
 // ── sub-components ─────────────────────────────────────────────────────────
@@ -189,11 +209,11 @@ export default function EmbyLibrary() {
       // Get user ID
       let userId;
       try {
-        const me = await proxyFetch(`${base}/Users/Me`, authHeaders);
+        const me = await embyFetch(`${base}/Users/Me`, authHeaders);
         userId = me?.Id;
       } catch (_) {}
       if (!userId) {
-        const users = await proxyFetch(`${base}/Users`, authHeaders);
+        const users = await embyFetch(`${base}/Users`, authHeaders);
         const list = Array.isArray(users) ? users : (users?.Items || []);
         const admin = list.find(u => u.Policy?.IsAdministrator) || list[0];
         userId = admin?.Id;
@@ -206,7 +226,7 @@ export default function EmbyLibrary() {
       const all = [];
 
       while (true) {
-        const json = await proxyFetch(
+        const json = await embyFetch(
           `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
           `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
           `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}`,
