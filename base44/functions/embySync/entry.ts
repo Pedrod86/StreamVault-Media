@@ -156,13 +156,14 @@ Deno.serve(async (req) => {
         const key = mapped.title.toLowerCase().trim();
         const existingItem = existingMap.get(key);
         if (existingItem) {
-          if (mapped.video_url && !existingItem.video_url) {
+          // Only update real DB records (sentinels have no id)
+          if (existingItem.id && mapped.video_url && !existingItem.video_url) {
             await base44.asServiceRole.entities.Media.update(existingItem.id, { video_url: mapped.video_url });
             updatedCount++;
           }
         } else {
           newItems.push(mapped);
-          existingMap.set(key, { title: mapped.title }); // prevent duplicates within this batch
+          existingMap.set(key, { _sentinel: true }); // prevent duplicates within this batch
         }
       }
 
