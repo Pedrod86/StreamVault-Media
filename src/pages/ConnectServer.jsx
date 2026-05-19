@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import SyncServerButton from '@/components/server/SyncServerButton';
 import ServerHealthBadge from '@/components/server/ServerHealthBadge';
 import XtreamForm, { XTREAM } from '@/components/server/XtreamForm';
+import IptvConnectionTester from '@/components/server/IptvConnectionTester';
 
 const SERVERS = [
   {
@@ -240,7 +241,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex items-center gap-4 p-4 rounded-xl border ${meta.bg}`}
+      className={`flex flex-wrap items-center gap-4 p-4 rounded-xl border ${meta.bg}`}
     >
       <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shadow-md shrink-0`}>
         {isTrakt ? <ActivityIcon /> : isXtream ? <IptvIcon /> : <Server className="w-5 h-5 text-white" />}
@@ -269,6 +270,12 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
+
+      {isXtream && (
+        <div className="w-full col-span-full">
+          <IptvConnectionTester server={srv} />
+        </div>
+      )}
     </motion.div>
   );
 }
