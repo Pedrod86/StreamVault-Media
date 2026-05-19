@@ -11,9 +11,29 @@ Deno.serve(async (req) => {
 
     if (!url) return Response.json({ error: 'Missing url parameter' }, { status: 400 });
 
+    // Parse the original URL so we can build Cloudflare-bypass headers from it
+    let parsedUrl;
+    try { parsedUrl = new URL(url); } catch { parsedUrl = null; }
+
+    // Headers that trick Cloudflare into thinking the request arrived over HTTPS
+    // on the correct host, preventing it from issuing a 301 HTTP→HTTPS redirect.
+    const cfBypassHeaders = parsedUrl ? {
+      'X-Forwarded-Proto': 'https',
+      'X-Forwarded-Host': parsedUrl.host,
+      'X-Forwarded-For': '1.1.1.1',
+      'CF-Visitor': '{"scheme":"https"}',
+    } : {};
+
+    const baseHeaders = {
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (compatible; StreamVault/1.0)',
+      ...cfBypassHeaders,
+      ...reqHeaders,
+    };
+
     const fetchOptions = {
       method,
-      headers: { 'Accept': 'application/json', ...reqHeaders },
+      headers: { ...baseHeaders },
     };
     if (bodyData) {
       fetchOptions.body = JSON.stringify(bodyData);
@@ -27,36 +47,41 @@ Deno.serve(async (req) => {
     const timeout = setTimeout(() => controller.abort(), 15000);
     let res;
     try {
-      // Step 1: fetch with redirect:manual to capture the first redirect location
-      res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
-
-      if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
-        const location = res.headers.get('location');
-        if (location) {
-          const nextUrl = location.startsWith('http') ? location : new URL(location, currentUrl).toString();
-          // Only follow if different (avoid loop)
-          if (nextUrl !== currentUrl) {
-            redirectChain.push(nextUrl);
-            currentUrl = nextUrl;
-            console.log(`[mediaProxy] Redirect: ${redirectChain[0]} → ${currentUrl}`);
-          }
-        }
-        // Step 2: fetch the resolved URL directly, no further redirect following
+      // Follow up to 5 redirects manually so we can detect and break loops
+      for (let i = 0; i < 5; i++) {
         res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
-        // If still redirecting (server loop), just return whatever we got
-        if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
-          const location2 = res.headers.get('location');
-          if (location2 && location2 !== currentUrl && !redirectChain.includes(location2)) {
-            const next2 = location2.startsWith('http') ? location2 : new URL(location2, currentUrl).toString();
-            redirectChain.push(next2);
-            currentUrl = next2;
-            res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'follow' });
-          }
+
+        const isRedirect = res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308;
+        if (!isRedirect) break;
+
+        const location = res.headers.get('location');
+        if (!location) break;
+
+        const nextUrl = location.startsWith('http') ? location : new URL(location, currentUrl).toString();
+
+        // Break out of loops — if we've already seen this URL, stop
+        if (redirectChain.includes(nextUrl)) {
+          console.log(`[mediaProxy] Loop detected at ${nextUrl}, stopping`);
+          break;
+        }
+
+        console.log(`[mediaProxy] Redirect ${i + 1}: ${currentUrl} → ${nextUrl}`);
+        redirectChain.push(nextUrl);
+        currentUrl = nextUrl;
+
+        // Update CF bypass headers for the new host
+        let nextParsed;
+        try { nextParsed = new URL(nextUrl); } catch { nextParsed = null; }
+        if (nextParsed) {
+          fetchOptions.headers['X-Forwarded-Host'] = nextParsed.host;
+          fetchOptions.headers['X-Forwarded-Proto'] = 'https';
+          fetchOptions.headers['CF-Visitor'] = '{"scheme":"https"}';
         }
       }
     } finally {
       clearTimeout(timeout);
     }
+
     const text = await res.text();
 
     let data;
@@ -66,7 +91,12 @@ Deno.serve(async (req) => {
       data = text;
     }
 
-    return Response.json({ status: res.status, ok: res.ok, data, redirectChain: redirectChain.length > 1 ? redirectChain : undefined });
+    return Response.json({
+      status: res.status,
+      ok: res.ok,
+      data,
+      redirectChain: redirectChain.length > 1 ? redirectChain : undefined,
+    });
   } catch (error) {
     const msg = error.name === 'AbortError'
       ? 'Request timed out — server unreachable or too slow'
