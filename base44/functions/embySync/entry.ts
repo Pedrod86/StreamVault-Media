@@ -130,18 +130,26 @@ Deno.serve(async (req) => {
     );
     const totalCount = countJson.TotalRecordCount || 0;
 
-    // Get existing media to deduplicate
+    // Get existing media to deduplicate — paginate to avoid rate limits
     const base44 = base44Client;
-    const existing = await base44.asServiceRole.entities.Media.list('-created_date', 2000);
-    const existingMap = new Map(existing.map(m => [m.title.toLowerCase().trim(), m]));
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    const existingMap = new Map();
+    let existingPage = 0;
+    const PAGE_DB = 500;
+    while (true) {
+      const page = await base44.asServiceRole.entities.Media.list('-created_date', PAGE_DB, existingPage * PAGE_DB);
+      for (const m of page) existingMap.set(m.title.toLowerCase().trim(), m);
+      if (page.length < PAGE_DB) break;
+      existingPage++;
+      await sleep(500); // pause between DB reads
+    }
 
     let startIndex = 0;
     let newItems = [];
     let updateItems = []; // collect updates, apply in batch at end
     let updatedCount = 0;
     let fetchedCount = 0;
-
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     while (startIndex < totalCount || (startIndex === 0 && totalCount === 0)) {
       const url = `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
