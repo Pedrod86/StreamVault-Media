@@ -20,19 +20,39 @@ Deno.serve(async (req) => {
       fetchOptions.headers['Content-Type'] = 'application/json';
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
     const redirectChain = [url];
     let currentUrl = url;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     let res;
     try {
-      // First attempt: let fetch follow redirects automatically (handles HTTP→HTTPS via Cloudflare)
-      res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'follow' });
-      // If the response URL changed, record it in the chain
-      if (res.url && res.url !== currentUrl) {
-        redirectChain.push(res.url);
-        console.log(`[mediaProxy] Redirect chain: ${currentUrl} → ${res.url} (status: ${res.status})`);
-        currentUrl = res.url;
+      // Step 1: fetch with redirect:manual to capture the first redirect location
+      res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
+
+      if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
+        const location = res.headers.get('location');
+        if (location) {
+          const nextUrl = location.startsWith('http') ? location : new URL(location, currentUrl).toString();
+          // Only follow if different (avoid loop)
+          if (nextUrl !== currentUrl) {
+            redirectChain.push(nextUrl);
+            currentUrl = nextUrl;
+            console.log(`[mediaProxy] Redirect: ${redirectChain[0]} → ${currentUrl}`);
+          }
+        }
+        // Step 2: fetch the resolved URL directly, no further redirect following
+        res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'manual' });
+        // If still redirecting (server loop), just return whatever we got
+        if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
+          const location2 = res.headers.get('location');
+          if (location2 && location2 !== currentUrl && !redirectChain.includes(location2)) {
+            const next2 = location2.startsWith('http') ? location2 : new URL(location2, currentUrl).toString();
+            redirectChain.push(next2);
+            currentUrl = next2;
+            res = await fetch(currentUrl, { ...fetchOptions, signal: controller.signal, redirect: 'follow' });
+          }
+        }
       }
     } finally {
       clearTimeout(timeout);

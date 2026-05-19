@@ -18,8 +18,8 @@ async function proxyFetch(url, headers = {}) {
   }
 
   // Upstream returned a non-OK HTTP status
-  if (!res.data.ok && res.data.status !== 200) {
-    throw new Error(`Server responded with status ${res.data.status}`);
+  if (!res.data.ok) {
+    throw new Error(`Server responded with HTTP ${res.data.status}`);
   }
 
   return res.data.data;
@@ -75,8 +75,11 @@ async function fetchJellyfinLibrary(server) {
   const token = server.api_token;
   const authHeaders = { 'X-Emby-Token': token, 'X-MediaBrowser-Token': token };
 
-  const user = await proxyFetch(`${base}/Users/Me`, authHeaders);
-  if (!user?.Id) throw new Error(`Jellyfin auth failed. Check your API key and server URL.`);
+  // /Users/Me requires session auth — use /Users list instead
+  const users = await proxyFetch(`${base}/Users`, authHeaders);
+  const userList = Array.isArray(users) ? users : (users?.Items || []);
+  if (!userList.length) throw new Error('Jellyfin auth failed. Check your API key and server URL.');
+  const user = userList.find(u => u.Policy?.IsAdministrator) || userList[0];
   const userId = user.Id;
 
   const json = await proxyFetch(
@@ -120,8 +123,12 @@ async function fetchEmbyLibrary(server) {
 
   const authHeaders = { 'X-Emby-Token': token };
 
-  const user = await proxyFetch(`${base}/Users/Me`, authHeaders);
-  if (!user?.Id) throw new Error('Could not authenticate with Emby server.');
+  // /Users/Me requires session auth — use /Users list instead and pick the admin/first user
+  const users = await proxyFetch(`${base}/Users`, authHeaders);
+  const userList = Array.isArray(users) ? users : (users?.Items || []);
+  if (!userList.length) throw new Error('Could not retrieve users from Emby server. Check your API key.');
+  // Prefer admin user, fall back to first
+  const user = userList.find(u => u.Policy?.IsAdministrator) || userList[0];
   const userId = user.Id;
 
   const json = await proxyFetch(
