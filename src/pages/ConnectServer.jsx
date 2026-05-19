@@ -475,29 +475,32 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
   const handleCredentials = async (e) => {
     e.preventDefault();
     setAuthError('');
-    // For Emby/Jellyfin, authenticate first to obtain an API token
+    // For Emby/Jellyfin, authenticate via proxy to avoid CORS issues
     if (server.id === 'emby' || server.id === 'jellyfin') {
       const base = url.replace(/\/$/, '');
-      let authRes;
+      let res;
       try {
-        authRes = await fetch(`${base}/Users/AuthenticateByName`, {
+        res = await base44.functions.invoke('mediaProxy', {
+          url: `${base}/Users/AuthenticateByName`,
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'X-Emby-Authorization': 'MediaBrowser Client="StreamVault", Device="Browser", DeviceId="streamvault", Version="1.0.0"',
-            Accept: 'application/json',
           },
-          body: JSON.stringify({ Username: username, Pw: password }),
+          bodyData: { Username: username, Pw: password },
         });
       } catch (err) {
-        setAuthError('Cannot reach your server. This is usually a CORS issue — your browser is blocking the request. Go to your Emby/Jellyfin Dashboard → Advanced → Networking and add this app\'s domain to the allowed CORS origins. Also ensure your server URL is reachable from this device.');
+        setAuthError('Cannot reach your server. Check the URL is correct and reachable.');
         return;
       }
-      if (!authRes.ok) {
+      if (res.data?.error) {
+        setAuthError(res.data.error);
+        return;
+      }
+      if (!res.data?.ok) {
         setAuthError('Authentication failed. Double-check your username, password, and server URL (include port, e.g. http://192.168.1.10:8096).');
         return;
       }
-      const authData = await authRes.json();
+      const authData = res.data.data;
       onSave({
         server_url: url,
         username,
