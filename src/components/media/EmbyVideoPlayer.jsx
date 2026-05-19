@@ -13,6 +13,25 @@ function formatTime(secs) {
   return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
+// Report playback session to Emby (start / progress / stop)
+// positionTicks = seconds * 10_000_000
+async function reportPlayback(base, token, action, itemId, positionSeconds, isPaused = false) {
+  const ticks = Math.round((positionSeconds || 0) * 10_000_000);
+  const body = { ItemId: itemId, PositionTicks: ticks, IsPaused: isPaused, CanSeek: true };
+  const url = action === 'stop'
+    ? `${base}/Sessions/Playing/Stopped`
+    : action === 'start'
+    ? `${base}/Sessions/Playing`
+    : `${base}/Sessions/Playing/Progress`;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'X-Emby-Token': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (_) { /* best-effort */ }
+}
+
 // Fetch playback info from Emby: subtitles, audio streams, video streams
 async function fetchPlaybackInfo(base, itemId, token) {
   try {
@@ -60,6 +79,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hideTimer = useRef(null);
+  const progressInterval = useRef(null);
 
   const base = server.server_url.replace(/\/$/, '');
   const token = server.api_token;
@@ -166,6 +186,23 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
     }, 3000);
   }, []);
 
+  // Report playback start to Emby
+  useEffect(() => {
+    reportPlayback(base, token, 'start', item.id, 0);
+    // Report progress every 10 seconds
+    progressInterval.current = setInterval(() => {
+      const v = videoRef.current;
+      if (!v) return;
+      reportPlayback(base, token, 'progress', item.id, v.currentTime, v.paused);
+    }, 10_000);
+    return () => {
+      clearInterval(progressInterval.current);
+      // Report stop with final position
+      const v = videoRef.current;
+      reportPlayback(base, token, 'stop', item.id, v?.currentTime || 0);
+    };
+  }, [base, token, item.id]);
+
   useEffect(() => {
     const onFsChange = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFsChange);
@@ -221,8 +258,14 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
         src={buildStreamUrl(activeSourceIdx, activeAudio)}
         className="w-full h-full object-contain"
         autoPlay
-        onPlay={() => { setPlaying(true); setLoading(false); }}
-        onPause={() => { setPlaying(false); setShowControls(true); }}
+        onPlay={() => {
+          setPlaying(true); setLoading(false);
+          reportPlayback(base, token, 'progress', item.id, videoRef.current?.currentTime || 0, false);
+        }}
+        onPause={() => {
+          setPlaying(false); setShowControls(true);
+          reportPlayback(base, token, 'progress', item.id, videoRef.current?.currentTime || 0, true);
+        }}
         onWaiting={() => setLoading(true)}
         onCanPlay={() => setLoading(false)}
         onTimeUpdate={() => {
