@@ -140,7 +140,7 @@ export default function EmbyLibrary() {
   const [playingItem, setPlayingItem] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
 
-  const { data: servers = [] } = useQuery({
+  const { data: servers = [], isLoading: serversLoading } = useQuery({
     queryKey: ['mediaServers'],
     queryFn: () => base44.entities.MediaServer.list(),
     staleTime: 60 * 1000,
@@ -210,8 +210,18 @@ export default function EmbyLibrary() {
         <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center">
           <Database className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h2 className="font-heading font-bold text-xl text-foreground">No Emby Server</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">Connect an Emby server in Settings to browse your library.</p>
+        {serversLoading ? (
+          <p className="text-sm text-muted-foreground">Loading servers…</p>
+        ) : (
+          <>
+            <h2 className="font-heading font-bold text-xl text-foreground">No Emby Server</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              {servers.length === 0
+                ? 'Connect an Emby server in Settings to browse your library.'
+                : `Found ${servers.length} server(s) but none matched Emby: ${servers.map(s => s.server_type).join(', ')}`}
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -265,7 +275,7 @@ export default function EmbyLibrary() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && !error ? (
         <div className="space-y-8 px-4 sm:px-6">
           {[1, 2, 3].map(i => (
             <div key={i}>
