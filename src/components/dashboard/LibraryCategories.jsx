@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles } from 'lucide-react';
+import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Database } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 
@@ -30,6 +30,16 @@ export default function LibraryCategories({ allMedia = [] }) {
     queryKey: ['watchHistory'],
     queryFn: () => base44.entities.WatchHistory.list('-last_watched', 500),
     staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: embyData } = useQuery({
+    queryKey: ['embyLibraryCount'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('embyLibrary', { startIndex: 0 });
+      return res.data?.total || null;
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: false,
   });
 
   const totalWatchSeconds = history.reduce((acc, h) => acc + (h.progress_seconds || 0), 0);
@@ -118,6 +128,16 @@ export default function LibraryCategories({ allMedia = [] }) {
       href: '/history',
       value: inProgressCount,
     },
+    ...(embyData != null ? [{
+      key: 'emby',
+      label: 'Emby Library',
+      icon: Database,
+      color: 'text-green-400',
+      bg: 'bg-green-400/10',
+      border: 'border-green-400/20',
+      href: '/emby',
+      value: embyData.toLocaleString(),
+    }] : []),
   ];
 
   if (!allMedia.length) return null;
