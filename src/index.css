@@ -100,11 +100,18 @@ html, body {
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 .safe-left   { padding-left:   env(safe-area-inset-left); }
 .safe-right  { padding-right:  env(safe-area-inset-right); }
+.pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
-/* Global no-select on interactive elements */
-button, a, nav {
+/* Global no-select on interactive elements and layout */
+button, a, nav, header, [role="tab"], label {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Preserve text selection for readable content */
+p, h1, h2, h3, h4, h5, h6, span.selectable, .prose, textarea, input {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Custom scrollbar */

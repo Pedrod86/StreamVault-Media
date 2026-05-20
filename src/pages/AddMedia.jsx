@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Plus, X, Film, Tv } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { motion } from 'framer-motion';
 
 const GENRES = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Horror', 'Romance', 'Sci-Fi', 'Thriller'];
@@ -236,10 +237,10 @@ export default function AddMedia() {
               </div>
             )}
           </div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={form.is_featured} onChange={e => set('is_featured', e.target.checked)} className="w-4 h-4 accent-primary rounded" />
-            <span className="text-sm text-foreground">Feature on homepage hero banner</span>
-          </label>
+          <div className="flex items-center gap-3">
+            <Switch id="is_featured" checked={form.is_featured} onCheckedChange={v => set('is_featured', v)} />
+            <Label htmlFor="is_featured" className="text-sm text-foreground cursor-pointer">Feature on homepage hero banner</Label>
+          </div>
         </div>
 
         {/* Submit */}

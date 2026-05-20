@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Film, Tv, BookmarkPlus, Database } from 'lucide-react';
 
 const TABS = [
@@ -16,6 +16,7 @@ const SCROLL_KEY = (path) => `sv_scroll_${path}`;
 
 export default function BottomNav() {
   const location = useLocation();
+  const navigate = useNavigate();
   const prevPathRef = useRef(location.pathname);
 
   // Save scroll position of current tab before leaving it
@@ -43,12 +44,16 @@ export default function BottomNav() {
 
   const handleTabPress = useCallback((e, to) => {
     if (location.pathname === to) {
-      // Already on this tab — scroll to top and clear saved position
+      // Already on this tab root — scroll to top
       e.preventDefault();
       sessionStorage.removeItem(SCROLL_KEY(to));
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (!TAB_PATHS.has(location.pathname)) {
+      // On a sub-page — navigate to the tapped tab root
+      e.preventDefault();
+      navigate(to);
     }
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   return (
     <nav

@@ -4,14 +4,18 @@ import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAutoSync } from '@/hooks/useAutoSync';
-import { Search, UserCircle2 } from 'lucide-react';
+import { Search, UserCircle2, ArrowLeft } from 'lucide-react';
 import Navbar from './Navbar';
 import BottomNav from './BottomNav';
 import PageTransition from './PageTransition';
 import StreamVaultLogo from '@/components/StreamVaultLogo';
 
+const ROOT_TABS = new Set(['/', '/movies', '/emby', '/shows', '/watchlist']);
+
 export default function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const isRootTab = ROOT_TABS.has(location.pathname);
   useAutoSync();
 
   // Restore saved theme from settings
@@ -56,16 +60,25 @@ export default function AppLayout() {
         className="fixed top-0 left-0 right-0 z-50 md:hidden flex items-center justify-between px-4 bg-card/95 backdrop-blur-md border-b border-border"
         style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))' }}
       >
-        <Link to="/" className="flex items-center gap-2">
-          <img
-            src="https://www.dropbox.com/scl/fi/ub9cr2djh0cb7x57m25c7/streamvault.png?rlkey=png0dj93b0c1m3ksls5t5b7wn&st=4nd7duli&dl=1"
-            alt="StreamVault"
-            className="w-7 h-7 rounded-xl object-cover"
-          />
-          <span className="font-heading font-bold text-base bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            StreamVault
-          </span>
-        </Link>
+        {isRootTab ? (
+          <Link to="/" className="flex items-center gap-2">
+            <img
+              src="https://www.dropbox.com/scl/fi/ub9cr2djh0cb7x57m25c7/streamvault.png?rlkey=png0dj93b0c1m3ksls5t5b7wn&st=4nd7duli&dl=1"
+              alt="StreamVault"
+              className="w-7 h-7 rounded-xl object-cover"
+            />
+            <span className="font-heading font-bold text-base bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              StreamVault
+            </span>
+          </Link>
+        ) : (
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <div className="flex items-center gap-1">
           <Link
             to="/search"
