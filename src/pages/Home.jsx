@@ -146,6 +146,7 @@ export default function Home() {
         {activeTab === 'All' && (
           <>
             <EmbyRecentlyAdded />
+            <EmbyMediaRows />
             {continueWatching.length > 0 && (
               <MediaRow
                 title="Continue Watching"
@@ -161,7 +162,6 @@ export default function Home() {
             {kidsItems.length > 0 && (
               <MediaRow title="Kids" items={kidsItems} watchHistory={watchHistory} />
             )}
-            <EmbyMediaRows />
             {Object.entries(genreMap).slice(0, 4).map(([genre, items]) => (
               <MediaRow key={genre} title={genre} items={items} watchHistory={watchHistory} />
             ))}
