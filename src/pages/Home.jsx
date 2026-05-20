@@ -8,6 +8,7 @@ import PullToRefresh from '../components/layout/PullToRefresh';
 import SyncProgressBar from '../components/dashboard/SyncProgressBar';
 import LibraryCategories from '../components/dashboard/LibraryCategories';
 import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
+import EmbyMediaRows from '../components/media/EmbyMediaRows';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const TABS = [
@@ -139,8 +140,7 @@ export default function Home() {
               />
             )}
             <MediaRow title="Recently Added" items={recentlyAdded} watchHistory={watchHistory} />
-            <MediaRow title="Movies" items={movies} watchHistory={watchHistory} />
-            <MediaRow title="TV Shows" items={shows} watchHistory={watchHistory} />
+            <EmbyMediaRows />
             {Object.entries(genreMap).slice(0, 4).map(([genre, items]) => (
               <MediaRow key={genre} title={genre} items={items} watchHistory={watchHistory} />
             ))}
