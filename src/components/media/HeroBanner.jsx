@@ -17,7 +17,8 @@ export default function HeroBanner({ featured }) {
 
   if (!featured || featured.length === 0) return null;
 
-  const media = featured[current];
+  const media = featured[current] ?? featured[0];
+  if (!media) return null;
 
   return (
     <div className="relative h-[65vh] sm:h-[70vh] lg:h-[80vh] overflow-hidden">
