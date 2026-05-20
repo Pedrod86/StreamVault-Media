@@ -138,7 +138,7 @@ export default function Home() {
         ))}
       </div>
 
-      <LibraryCategories allMedia={visibleMedia} />
+      <LibraryCategories allMedia={allMedia} />
 
       <div className="mt-6 space-y-2">
         <ServerStatusBar />

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Database } from 'lucide-react';
+import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Database, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { scanState, runScan } from '@/lib/embyScanState';
 
 const IS_4K = (m) =>
   m.tags?.some(t => /4k|2160p|uhd/i.test(t)) ||
@@ -32,61 +33,49 @@ export default function LibraryCategories({ allMedia = [] }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: embyData } = useQuery({
-    queryKey: ['embyLibraryCount'],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('embyLibrary', { startIndex: 0 });
-      return res.data?.total || null;
-    },
-    staleTime: 10 * 60 * 1000,
-    retry: false,
-  });
+  // Subscribe to the shared Emby scan state (no extra API calls)
+  const [embyScan, setEmbyScan] = useState({ ...scanState });
+  useEffect(() => {
+    const listener = (state) => setEmbyScan({ ...state });
+    scanState.listeners.add(listener);
+    setEmbyScan({ ...scanState });
+    runScan(); // no-op if already running/done
+    return () => scanState.listeners.delete(listener);
+  }, []);
+
+  const embyMovies = embyScan.library.filter(i => i.type === 'Movie').length;
+  const embyShows = embyScan.library.filter(i => i.type === 'Series').length;
+  const embyLoading = embyScan.loading && embyScan.library.length === 0;
+  const embySyncing = embyScan.loading;
 
   const totalWatchSeconds = history.reduce((acc, h) => acc + (h.progress_seconds || 0), 0);
   const inProgressCount = history.filter(h => !h.completed && h.progress_seconds > 0).length;
 
+  const embyTotal = embyScan.library.length;
+  const hasEmby = embyTotal > 0 || embySyncing;
+
   const categories = [
     {
-      key: 'movies',
-      label: 'Movies',
+      key: 'emby-movies',
+      label: 'Emby Movies',
       icon: Film,
       color: 'text-blue-400',
       bg: 'bg-blue-400/10',
       border: 'border-blue-400/20',
-      href: '/movies',
-      value: allMedia.filter(m => m.media_type === 'movie' && !IS_4K(m)).length.toLocaleString(),
+      href: '/emby',
+      value: embyLoading ? '…' : embyMovies.toLocaleString(),
+      syncing: embySyncing,
     },
     {
-      key: 'shows',
-      label: 'TV Shows',
+      key: 'emby-shows',
+      label: 'Emby TV Shows',
       icon: Tv2,
       color: 'text-purple-400',
       bg: 'bg-purple-400/10',
       border: 'border-purple-400/20',
-      href: '/shows',
-      value: allMedia.filter(m => m.media_type === 'tv_show' && !IS_4K(m)).length.toLocaleString(),
-    },
-    {
-      key: '4k-movies',
-      label: '4K Movies',
-      icon: Film,
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-400/10',
-      border: 'border-yellow-400/20',
-      href: '/movies',
-      value: allMedia.filter(m => m.media_type === 'movie' && IS_4K(m)).length.toLocaleString(),
-      badge: '4K',
-    },
-    {
-      key: '4k-shows',
-      label: '4K TV Shows',
-      icon: Tv2,
-      color: 'text-orange-400',
-      bg: 'bg-orange-400/10',
-      border: 'border-orange-400/20',
-      href: '/shows',
-      value: allMedia.filter(m => m.media_type === 'tv_show' && IS_4K(m)).length.toLocaleString(),
-      badge: '4K',
+      href: '/emby',
+      value: embyLoading ? '…' : embyShows.toLocaleString(),
+      syncing: embySyncing,
     },
     {
       key: 'kids',
@@ -128,36 +117,33 @@ export default function LibraryCategories({ allMedia = [] }) {
       href: '/history',
       value: inProgressCount,
     },
-    ...(embyData != null ? [{
-      key: 'emby',
-      label: 'Emby Library',
-      icon: Database,
-      color: 'text-green-400',
-      bg: 'bg-green-400/10',
-      border: 'border-green-400/20',
-      href: '/emby',
-      value: embyData.toLocaleString(),
-    }] : []),
   ];
-
-  if (!allMedia.length) return null;
 
   return (
     <div className="px-4 sm:px-6 mt-6">
-      <h2 className="font-heading font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3">
-        Library
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-heading font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+          Library
+        </h2>
+        {embySyncing && (
+          <span className="flex items-center gap-1 text-[10px] text-accent">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Syncing Emby ({embyTotal.toLocaleString()} loaded)
+          </span>
+        )}
+        {embyScan.done && embyTotal > 0 && (
+          <span className="text-[10px] text-green-400">✓ {embyTotal.toLocaleString()} items</span>
+        )}
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {categories.map(({ key, label, icon: Icon, color, bg, border, href, value, badge }) => (
+        {categories.map(({ key, label, icon: Icon, color, bg, border, href, value, syncing }) => (
           <Link
             key={key}
             to={href}
             className={`relative flex flex-col gap-2 p-4 rounded-xl bg-card border ${border} hover:border-opacity-60 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200`}
           >
-            {badge && (
-              <span className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded ${bg} ${color}`}>
-                {badge}
-              </span>
+            {syncing && (
+              <Loader2 className="absolute top-2 right-2 w-3 h-3 text-accent animate-spin" />
             )}
             <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center`}>
               <Icon className={`w-4 h-4 ${color}`} />
