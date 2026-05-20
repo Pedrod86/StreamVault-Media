@@ -5,7 +5,7 @@ import { fetchServerLibrary } from '@/lib/serverSync';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 
@@ -36,6 +36,67 @@ function applyTheme(primary, accent) {
   document.documentElement.style.setProperty('--chart-1', primary);
   document.documentElement.style.setProperty('--accent', accent);
   document.documentElement.style.setProperty('--chart-2', accent);
+}
+
+function TvdbEnrichSection() {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState('idle'); // idle | running | done | error
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const run = async () => {
+    setStatus('running');
+    setResult(null);
+    setError(null);
+    try {
+      const res = await base44.functions.invoke('tvdbEnrichLibrary', {});
+      if (res.data?.error) throw new Error(res.data.error);
+      setResult(res.data);
+      setStatus('done');
+      queryClient.invalidateQueries({ queryKey: ['media'] });
+    } catch (e) {
+      setError(e.message);
+      setStatus('error');
+    }
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 p-5 rounded-xl bg-card border border-border">
+      <div className="flex items-center gap-2 mb-1">
+        <Tv2 className="w-4 h-4 text-blue-400" />
+        <h2 className="font-heading font-semibold text-foreground">TVDB Metadata Enrichment</h2>
+      </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Automatically fill in missing posters, descriptions, genres, and ratings for your entire library using TVDB.
+      </p>
+
+      {status === 'done' && result && (
+        <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 rounded-lg px-3 py-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{result.enriched} items enriched, {result.failed} failed, out of {result.total} checked.</span>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <Button
+        variant="outline"
+        className="w-full h-11 border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-2"
+        onClick={run}
+        disabled={status === 'running'}
+      >
+        {status === 'running' ? (
+          <><RefreshCw className="w-4 h-4 animate-spin" />Enriching library…</>
+        ) : (
+          <><Tv2 className="w-4 h-4" />Enrich Library with TVDB</>
+        )}
+      </Button>
+    </motion.section>
+  );
 }
 
 export default function Settings() {
@@ -234,6 +295,9 @@ export default function Settings() {
           </div>
         )}
       </motion.section>
+
+      {/* ── TVDB Bulk Enrich ── */}
+      <TvdbEnrichSection />
 
       {/* ── Save ── */}
       <div>
