@@ -187,24 +187,26 @@ async function fetchEmbyLibrary(server, onProgress) {
   const token = server.api_token;
   const authHeaders = { 'X-Emby-Token': token };
 
-  // Step 1: resolve userId via proxy
+  // Step 1: resolve userId — try api_key query param first (works on more servers)
   let userId;
   try {
-    const me = await proxyFetch(`${base}/Users/Me`, authHeaders);
-    userId = me?.Id;
-  } catch (_) {}
-  if (!userId) {
-    const users = await proxyFetch(`${base}/Users`, authHeaders);
+    const users = await proxyFetch(`${base}/Users?api_key=${token}`, {});
     const list = Array.isArray(users) ? users : (users?.Items || []);
     const admin = list.find(u => u.Policy?.IsAdministrator) || list[0];
     userId = admin?.Id;
+  } catch (_) {}
+  if (!userId) {
+    try {
+      const me = await proxyFetch(`${base}/Users/Me`, authHeaders);
+      userId = me?.Id;
+    } catch (_) {}
   }
   if (!userId) throw new Error('Could not authenticate with Emby. Check your API key.');
 
   // Step 2: get total count first so we can show accurate progress
   const countJson = await proxyFetch(
-    `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Limit=1&StartIndex=0`,
-    authHeaders
+    `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Limit=1&StartIndex=0&api_key=${token}`,
+    {}
   );
   const totalCount = countJson?.TotalRecordCount || 0;
 
@@ -217,8 +219,8 @@ async function fetchEmbyLibrary(server, onProgress) {
     const json = await proxyFetch(
       `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
       `&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
-      `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}`,
-      authHeaders
+      `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`,
+      {}
     );
     const items = json.Items || [];
     for (const item of items) {

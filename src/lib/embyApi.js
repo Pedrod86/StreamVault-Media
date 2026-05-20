@@ -7,7 +7,7 @@ import { base44 } from '@/api/base44Client';
 export async function embyProxyFetch(url, headers = {}) {
   const res = await base44.functions.invoke('mediaProxy', { url, headers });
   if (res.data?.error) throw new Error(res.data.error);
-  if (!res.data?.ok) throw new Error(`Server responded with HTTP ${res.data?.status}`);
+  if (!res.data?.ok) throw new Error(`Server responded with HTTP ${res.data?.status}: ${JSON.stringify(res.data?.data)}`);
   return res.data.data;
 }
 
@@ -19,41 +19,38 @@ export function buildStreamUrl(base, itemId, token) {
   return `${base}/Videos/${itemId}/stream?api_key=${token}&Static=true`;
 }
 
+/**
+ * Resolve the Emby user ID. Tries header auth first, then api_key query param.
+ * Returns the user ID string.
+ */
 export async function resolveEmbyUserId(base, token) {
-  const headers = { 'X-Emby-Token': token };
-  let userId;
-
-  // Try /Users/Me with header auth
+  // Try /Users with api_key query param — works on most Emby servers
   try {
-    const me = await embyProxyFetch(`${base}/Users/Me`, headers);
-    userId = me?.Id;
+    const users = await embyProxyFetch(`${base}/Users?api_key=${token}`, {});
+    const list = Array.isArray(users) ? users : (users?.Items || []);
+    const admin = list.find(u => u.Policy?.IsAdministrator) || list[0];
+    if (admin?.Id) return admin.Id;
   } catch (_) {}
 
-  // Fallback: /Users with api_key query param (some Emby servers require this)
-  if (!userId) {
-    try {
-      const users = await embyProxyFetch(`${base}/Users?api_key=${token}`, {});
-      const list = Array.isArray(users) ? users : (users?.Items || []);
-      const admin = list.find(u => u.Policy?.IsAdministrator) || list[0];
-      userId = admin?.Id;
-    } catch (_) {}
-  }
+  // Fallback: /Users/Me with header auth
+  try {
+    const me = await embyProxyFetch(`${base}/Users/Me`, { 'X-Emby-Token': token });
+    if (me?.Id) return me.Id;
+  } catch (_) {}
 
-  if (!userId) throw new Error('Could not authenticate with Emby');
-  return userId;
+  throw new Error('Could not authenticate with Emby — check your server URL and API token');
 }
 
 export async function fetchEmbyRecentlyAdded(server) {
   const base = server.server_url.replace(/\/$/, '');
   const token = server.api_token;
-  const headers = { 'X-Emby-Token': token };
 
   const userId = await resolveEmbyUserId(base, token);
 
   const items = await embyProxyFetch(
     `${base}/Users/${userId}/Items/Latest?IncludeItemTypes=Movie,Episode` +
     `&Fields=Overview,Genres,CommunityRating,ProductionYear,RunTimeTicks,ImageTags,BackdropImageTags,SeriesName,ParentId&Limit=20&api_key=${token}`,
-    headers
+    {}
   );
 
   return (Array.isArray(items) ? items : []).map(item => ({
@@ -76,7 +73,6 @@ export async function fetchEmbyRecentlyAdded(server) {
 export async function fetchEmbyFullLibrary(server) {
   const base = server.server_url.replace(/\/$/, '');
   const token = server.api_token;
-  const headers = { 'X-Emby-Token': token };
 
   const userId = await resolveEmbyUserId(base, token);
 
@@ -89,9 +85,9 @@ export async function fetchEmbyFullLibrary(server) {
       `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
       `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
       `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`,
-      headers
+      {}
     );
-    const items = json.Items || [];
+    const items = json?.Items || [];
     for (const item of items) {
       all.push({
         id: item.Id,

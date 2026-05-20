@@ -151,8 +151,18 @@ export default function EmbyLibrary() {
   const { data: library = [], isLoading, error } = useQuery({
     queryKey: ['embyLiveLibrary', embyServer?.id],
     enabled: !!embyServer,
-    staleTime: 5 * 60 * 1000,
-    queryFn: () => fetchEmbyFullLibrary(embyServer),
+    staleTime: 0,
+    retry: 0,
+    queryFn: async () => {
+      try {
+        const result = await fetchEmbyFullLibrary(embyServer);
+        console.log('[EmbyLibrary] Loaded', result.length, 'items');
+        return result;
+      } catch (err) {
+        console.error('[EmbyLibrary] fetchEmbyFullLibrary failed:', err.message);
+        throw err;
+      }
+    },
   });
 
   const filters = ['All', 'Movies', 'TV Shows'];
@@ -269,9 +279,15 @@ export default function EmbyLibrary() {
           ))}
         </div>
       ) : error ? (
-        <div className="text-center py-16 px-6 space-y-2">
+        <div className="text-center py-16 px-6 space-y-3">
           <p className="text-destructive text-sm font-medium">Failed to load library</p>
-          <p className="text-muted-foreground text-xs max-w-sm mx-auto leading-relaxed">{error.message}</p>
+          <p className="text-muted-foreground text-xs max-w-sm mx-auto leading-relaxed font-mono bg-secondary rounded-lg px-3 py-2">{error.message}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-primary underline"
+          >
+            Retry
+          </button>
         </div>
       ) : search.trim() ? (
         <div>
