@@ -12,7 +12,7 @@ async function getTvdbToken() {
     body: JSON.stringify({ apikey: Deno.env.get('TVDB_API_KEY') }),
   });
   const data = await res.json();
-  if (!data.data?.token) throw new Error('TVDB auth failed: ' + JSON.stringify(data));
+  if (!data.data?.token) throw new Error('TVDB auth failed');
   cachedToken = data.data.token;
   tokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
   return cachedToken;
@@ -22,17 +22,18 @@ async function tvdbFetch(path, token) {
   const res = await fetch(`${TVDB_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`TVDB ${path} returned ${res.status}`);
+  if (!res.ok) return null;
   return res.json();
 }
 
+// Fast lookup: search only (1 API call per item, no extended fetch)
 async function lookupOne(title, year, type, token) {
   const searchParams = new URLSearchParams({ query: title });
   if (type === 'movie') searchParams.set('type', 'movie');
   else if (type === 'tv_show') searchParams.set('type', 'series');
 
   const searchData = await tvdbFetch(`/search?${searchParams}`, token);
-  const results = searchData.data || [];
+  const results = searchData?.data || [];
   if (!results.length) return null;
 
   let match = results[0];
@@ -44,33 +45,11 @@ async function lookupOne(title, year, type, token) {
     if (yearMatch) match = yearMatch;
   }
 
-  const entityType = match.type;
-  const id = match.tvdb_id || match.id;
+  const poster = match.image_url || match.thumbnail || null;
+  const overview = match.overview || null;
+  const genres = match.genres || [];
 
-  let extended = null;
-  try {
-    const endpoint = entityType === 'movie' ? `/movies/${id}/extended` : `/series/${id}/extended`;
-    const d = await tvdbFetch(endpoint, token);
-    extended = d.data;
-  } catch (_) {}
-
-  const getImage = (artworks, t) => {
-    const art = artworks?.find(a => a.type === t && a.language === 'eng') || artworks?.find(a => a.type === t);
-    return art?.image || null;
-  };
-
-  const artworks = extended?.artworks || [];
-  const poster = getImage(artworks, 2) || match.image_url || match.thumbnail || null;
-  const backdrop = getImage(artworks, 3) || null;
-  const genres = extended?.genres?.map(g => g.name) || match.genres || [];
-  const overview = extended?.overview || match.overview || null;
-  const seasonCount = entityType === 'series'
-    ? (extended?.seasons?.filter(s => s.type?.type === 'official' && s.number > 0).length || null)
-    : null;
-  const rating = extended?.averageScore ? parseFloat(Number(extended.averageScore / 10).toFixed(1)) : null;
-  const contentRating = extended?.contentRatings?.[0]?.name || null;
-
-  return { poster, backdrop, overview, genres, seasonCount, rating, contentRating };
+  return { poster, overview, genres };
 }
 
 Deno.serve(async (req) => {
@@ -79,28 +58,29 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Accept offset + batchSize to support paginated calls from the frontend
+    const body = await req.json().catch(() => ({}));
+    const offset = parseInt(body.offset ?? 0, 10);
+    const batchSize = Math.min(parseInt(body.batchSize ?? 50, 10), 100);
+
     const token = await getTvdbToken();
 
-    // Fetch all media for this user (paginated)
-    let allMedia = [];
-    let skip = 0;
-    const limit = 200;
-    while (true) {
-      const page = await base44.entities.Media.list('-created_date', limit, skip);
-      if (!page || page.length === 0) break;
-      allMedia = allMedia.concat(page);
-      if (page.length < limit) break;
-      skip += limit;
-    }
+    // Fetch one page of media needing enrichment
+    // We fetch a larger window and filter client-side, then process batchSize items
+    const FETCH_WINDOW = 500;
+    const page = await base44.entities.Media.list('-created_date', FETCH_WINDOW, offset);
 
-    // Filter to items that are missing key metadata
-    const needsEnrichment = allMedia.filter(m =>
+    // Count total for progress (fetch just count info)
+    const firstPage = offset === 0
+      ? await base44.entities.Media.list('-created_date', 1, 0)
+      : null;
+
+    const needsEnrichment = (page || []).filter(m =>
       !m.poster_url || !m.description || !m.genre?.length
-    );
+    ).slice(0, batchSize);
 
     let enriched = 0;
     let failed = 0;
-    const DELAY = 300; // ms between requests to avoid rate limiting
 
     for (const media of needsEnrichment) {
       try {
@@ -109,29 +89,30 @@ Deno.serve(async (req) => {
 
         const updates = {};
         if (tvdb.poster && !media.poster_url) updates.poster_url = tvdb.poster;
-        if (tvdb.backdrop && !media.backdrop_url) updates.backdrop_url = tvdb.backdrop;
         if (tvdb.overview && !media.description) updates.description = tvdb.overview;
         if (tvdb.genres?.length && (!media.genre || !media.genre.length)) updates.genre = tvdb.genres;
-        if (tvdb.rating && !media.rating) updates.rating = tvdb.rating;
-        if (tvdb.seasonCount && !media.season_count) updates.season_count = tvdb.seasonCount;
-        if (tvdb.contentRating && !media.content_rating) updates.content_rating = tvdb.contentRating;
 
         if (Object.keys(updates).length > 0) {
           await base44.entities.Media.update(media.id, updates);
           enriched++;
         }
 
-        await new Promise(r => setTimeout(r, DELAY));
+        // Small delay to avoid TVDB rate limits
+        await new Promise(r => setTimeout(r, 150));
       } catch (_) {
         failed++;
       }
     }
 
+    const pageSize = page?.length ?? 0;
+    const hasMore = pageSize === FETCH_WINDOW; // if we got a full window, there may be more
+
     return Response.json({
-      total: needsEnrichment.length,
       enriched,
       failed,
-      skipped: needsEnrichment.length - enriched - failed,
+      processed: needsEnrichment.length,
+      hasMore,
+      nextOffset: offset + FETCH_WINDOW,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
