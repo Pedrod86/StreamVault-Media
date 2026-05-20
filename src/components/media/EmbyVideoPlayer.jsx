@@ -74,7 +74,7 @@ function MenuPanel({ title, items, activeIndex, onSelect, onBack }) {
 }
 
 // ── External player launcher (VLC / Infuse / nPlayer) ──────────────────────
-function ExternalPlayerView({ item, server, playerId, onClose }) {
+function ExternalPlayerView({ item, server, playerId, onClose, onSwitchPlayer }) {
   const base = server.server_url.replace(/\/$/, '');
   const token = server.api_token;
   const streamUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=true`;
@@ -88,6 +88,7 @@ function ExternalPlayerView({ item, server, playerId, onClose }) {
   const scheme = schemeMap[playerId] || `vlc://${streamUrl}`;
   const playerLabel = PLAYERS.find(p => p.id === playerId)?.label || 'External Player';
 
+  const [showPicker, setShowPicker] = useState(false);
   const handleOpen = () => { window.location.href = scheme; };
 
   return (
@@ -95,6 +96,20 @@ function ExternalPlayerView({ item, server, playerId, onClose }) {
       <button onClick={onClose} className="absolute top-4 left-4 text-white/70 hover:text-white">
         <X className="w-6 h-6" />
       </button>
+      <button
+        onClick={() => setShowPicker(p => !p)}
+        className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white hover:bg-white/20"
+      >
+        <Layers className="w-3.5 h-3.5" />
+        {playerLabel}
+      </button>
+      {showPicker && (
+        <PlayerPicker
+          current={playerId}
+          onChange={(p) => { onSwitchPlayer(p); setShowPicker(false); }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
       <ExternalLink className="w-14 h-14 text-primary" />
       <div className="text-center space-y-2 max-w-sm">
         <h2 className="text-white text-xl font-bold">{item.title}</h2>
@@ -500,6 +515,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
         server={server}
         playerId={player}
         onClose={onClose}
+        onSwitchPlayer={handleSwitchPlayer}
       />
     );
   }
