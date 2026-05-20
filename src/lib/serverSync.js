@@ -15,7 +15,19 @@ async function proxyFetch(url, headers = {}) {
 
   // Proxy itself returned an error (e.g. timeout, network failure)
   if (res.data?.error) {
-    throw new Error(res.data.error);
+    const msg = res.data.error;
+    // Detect private/local IP unreachable errors and give a clear explanation
+    if (
+      msg.includes('Connection refused') ||
+      msg.includes('tcp connect error') ||
+      msg.includes('client error (Connect)')
+    ) {
+      throw new Error(
+        'Cannot reach server — the backend proxy runs in the cloud and cannot connect to local/private network addresses (e.g. 192.168.x.x, 10.x.x.x). ' +
+        'Your server must be accessible on the public internet (via a public IP or domain + port forwarding) for sync to work.'
+      );
+    }
+    throw new Error(msg);
   }
 
   // Upstream returned a non-OK HTTP status
