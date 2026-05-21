@@ -7,7 +7,7 @@ import ExternalPlayerView from './ExternalPlayerView';
 export default function EmbyVideoPlayer({ item, server, onClose }) {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
-  const [playerId, setPlayerId] = useState('mpv'); // default: MPV
+  const [playerId, setPlayerId] = useState('direct'); // default: Direct Play
   const [showPicker, setShowPicker] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
