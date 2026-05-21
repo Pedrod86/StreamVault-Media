@@ -2,40 +2,33 @@
  * Xtream Codes API — mapped endpoints
  *
  * All functions take a `server` object: { server_url, username, password }
- * server_url should already be normalised (http://host:port or http://host:port/api)
+ * Calls are proxied through the backend to avoid CORS issues.
  */
 
-function xtreamBase(server) {
+import { base44 } from '@/api/base44Client';
+
+async function xtreamGet(server, action, extra = '') {
+  const res = await base44.functions.invoke('xtreamProxy', {
+    server_url: server.server_url,
+    username: server.username,
+    password: server.password,
+    action,
+    extra,
+  });
+  const data = res?.data?.data;
+  return data ?? null;
+}
+
+export function xtreamBase(server) {
   return server.server_url.replace(/\/$/, '');
 }
 
-function xtreamAuth(server) {
-  const u = encodeURIComponent(server.username || '');
-  const p = encodeURIComponent(server.password || '');
-  return `username=${u}&password=${p}`;
-}
-
-async function xtreamGet(server, action, extra = '') {
-  const base = xtreamBase(server);
-  const auth = xtreamAuth(server);
-  const actionPart = action ? `&action=${action}` : '';
-  const url = `${base}/player_api.php?${auth}${actionPart}${extra ? '&' + extra : ''}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Xtream API error (${res.status})`);
-  const text = await res.text();
-  try { return JSON.parse(text); } catch { return null; }
-}
-
 // ─── 1. USERS ────────────────────────────────────────────────────────────────
-// GET /player_api.php?username=&password=  (no action → returns user_info + server_info)
 export async function getXtreamUserInfo(server) {
   return xtreamGet(server, '');
 }
 
 // ─── 2. STREAMS ──────────────────────────────────────────────────────────────
-// Live streams:  action=get_live_streams
-// VOD streams:   action=get_vod_streams
-// Series:        action=get_series
 export async function getLiveStreams(server, categoryId) {
   const extra = categoryId ? `category_id=${categoryId}` : '';
   return xtreamGet(server, 'get_live_streams', extra);
@@ -65,7 +58,6 @@ export function getVodStreamUrl(server, streamId, ext = 'mp4') {
 }
 
 // ─── 3. CATEGORIES ───────────────────────────────────────────────────────────
-// action=get_live_categories / get_vod_categories / get_series_categories
 export async function getLiveCategories(server) {
   return xtreamGet(server, 'get_live_categories');
 }
@@ -78,10 +70,7 @@ export async function getSeriesCategories(server) {
   return xtreamGet(server, 'get_series_categories');
 }
 
-// ─── 4. EPG (Electronic Programme Guide) ─────────────────────────────────────
-// All EPG:         GET /xmltv.php?username=&password=
-// EPG by stream:   action=get_simple_data_table&stream_id=X
-// Short EPG:       action=get_short_epg&stream_id=X&limit=N
+// ─── 4. EPG ──────────────────────────────────────────────────────────────────
 export async function getEpgForStream(server, streamId, limit = 4) {
   return xtreamGet(server, 'get_short_epg', `stream_id=${streamId}&limit=${limit}`);
 }
@@ -92,12 +81,12 @@ export async function getFullEpgForStream(server, streamId) {
 
 export function getXmltvUrl(server) {
   const base = xtreamBase(server);
-  const auth = xtreamAuth(server);
-  return `${base}/xmltv.php?${auth}`;
+  const u = encodeURIComponent(server.username || '');
+  const p = encodeURIComponent(server.password || '');
+  return `${base}/xmltv.php?username=${u}&password=${p}`;
 }
 
-// ─── 5. CONNECTIONS ──────────────────────────────────────────────────────────
-// Server info + active connection count is returned in the auth response
+// ─── 5. CONNECTION INFO ───────────────────────────────────────────────────────
 export async function getConnectionInfo(server) {
   const data = await getXtreamUserInfo(server);
   return {
@@ -110,20 +99,14 @@ export async function getConnectionInfo(server) {
   };
 }
 
-// ─── 6. RESELLERS ─────────────────────────────────────────────────────────────
-// Xtream reseller panel endpoints (requires reseller/admin credentials)
-// action=get_reseller_info
 export async function getResellerInfo(server) {
   return xtreamGet(server, 'get_reseller_info');
 }
 
-// ─── 7. PACKAGES ──────────────────────────────────────────────────────────────
-// Bouquets (channel packages): action=get_bouquets
 export async function getPackages(server) {
   return xtreamGet(server, 'get_bouquets');
 }
 
-// ─── VOD INFO / SERIES DETAILS ────────────────────────────────────────────────
 export async function getVodInfo(server, vodId) {
   return xtreamGet(server, 'get_vod_info', `vod_id=${vodId}`);
 }
