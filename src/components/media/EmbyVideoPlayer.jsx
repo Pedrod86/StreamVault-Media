@@ -1,9 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import dashjs from 'dashjs';
-import { X, Layers, Volume2, VolumeX, Maximize, Subtitles, ChevronDown } from 'lucide-react';
+import { X, Layers, Volume2, VolumeX, Maximize, Subtitles, ChevronDown, Play, Pause, SkipBack, SkipForward, PictureInPicture2 } from 'lucide-react';
 import PlayerPicker, { PLAYERS } from './PlayerPicker';
 import ExternalPlayerView from './ExternalPlayerView';
+
+function formatTime(secs) {
+  const s = Math.floor(secs || 0);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  return `${m}:${String(s % 60).padStart(2, '0')}`;
+}
 
 export default function EmbyVideoPlayer({ item, server, onClose }) {
   const videoRef = useRef(null);
@@ -18,6 +26,11 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const [activeSub, setActiveSub] = useState(-1); // -1 = off
   const [showSubPicker, setShowSubPicker] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffered, setBuffered] = useState(0);
+  const [pip, setPip] = useState(false);
   const hideTimer = useRef(null);
 
   const base = server?.server_url?.replace(/\/$/, '') || '';
@@ -47,6 +60,56 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
       })
       .catch(() => {});
   }, [item.id, base, token]);
+
+  // PiP events
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const enter = () => setPip(true);
+    const leave = () => setPip(false);
+    v.addEventListener('enterpictureinpicture', enter);
+    v.addEventListener('leavepictureinpicture', leave);
+    return () => { v.removeEventListener('enterpictureinpicture', enter); v.removeEventListener('leavepictureinpicture', leave); };
+  }, []);
+
+  // MediaSession API — lock screen / notification controls on Android Chrome
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: item.title || 'StreamVault',
+      artist: item.year ? String(item.year) : '',
+      artwork: item.posterUrl ? [{ src: item.posterUrl, sizes: '512x512', type: 'image/jpeg' }] : [],
+    });
+    const skip = (offset) => { if (videoRef.current) videoRef.current.currentTime += offset; };
+    navigator.mediaSession.setActionHandler('play', () => videoRef.current?.play());
+    navigator.mediaSession.setActionHandler('pause', () => videoRef.current?.pause());
+    navigator.mediaSession.setActionHandler('seekbackward', () => skip(-10));
+    navigator.mediaSession.setActionHandler('seekforward', () => skip(10));
+    return () => {
+      ['play','pause','seekbackward','seekforward'].forEach(a => {
+        try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
+      });
+    };
+  }, [item.title, item.year, item.posterUrl]);
+
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play(); else v.pause();
+  }, []);
+
+  const skip = useCallback((secs) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + secs));
+  }, []);
+
+  const togglePip = useCallback(async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (pip) await document.exitPictureInPicture?.();
+    else await v.requestPictureInPicture?.();
+  }, [pip]);
 
   // Apply subtitle track to video element (for direct/HLS native tracks)
   useEffect(() => {
@@ -188,7 +251,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
         </div>
       </div>
 
-      {/* Video — no native controls so our custom volume slider works on Android */}
+      {/* Video — no native controls so our custom controls work on Android */}
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
@@ -196,34 +259,56 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
         playsInline
         webkit-playsinline="true"
         x5-playsinline="true"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onLoadedMetadata={() => { if (videoRef.current) setDuration(videoRef.current.duration || 0); }}
+        onTimeUpdate={() => {
+          const v = videoRef.current;
+          if (!v) return;
+          setCurrentTime(v.currentTime);
+          if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1));
+        }}
+        onClick={showControls}
       />
 
       {/* Bottom controls */}
-      <div className={`absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-10 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="flex items-center gap-4">
+      <div className={`absolute bottom-0 left-0 right-0 z-10 px-4 pb-safe-bottom pb-5 pt-10 bg-gradient-to-t from-black/90 to-transparent transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
 
-          {/* Mute toggle */}
-          <button
-            onClick={() => setMuted(m => !m)}
-            className="text-white/80 hover:text-white transition-colors shrink-0"
-          >
-            {muted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+        {/* Seek bar */}
+        <div className="relative h-1.5 rounded-full bg-white/20 cursor-pointer group mb-3">
+          <div className="absolute inset-y-0 left-0 bg-white/30 rounded-full pointer-events-none" style={{ width: `${duration > 0 ? (buffered / duration) * 100 : 0}%` }} />
+          <div className="absolute inset-y-0 left-0 bg-primary rounded-full pointer-events-none" style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
+          <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg -ml-2 scale-0 group-hover:scale-100 transition-transform pointer-events-none"
+            style={{ left: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} />
+          <input type="range" min={0} max={duration || 100} step={0.5} value={currentTime}
+            onChange={(e) => { if (videoRef.current) { videoRef.current.currentTime = parseFloat(e.target.value); setCurrentTime(parseFloat(e.target.value)); } }}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Playback controls */}
+          <button onClick={() => skip(-10)} className="text-white/80 hover:text-white transition-colors">
+            <SkipBack className="w-5 h-5" />
+          </button>
+          <button onClick={togglePlay} className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+            {playing ? <Pause className="w-5 h-5 fill-white text-white" /> : <Play className="w-5 h-5 fill-white text-white ml-0.5" />}
+          </button>
+          <button onClick={() => skip(10)} className="text-white/80 hover:text-white transition-colors">
+            <SkipForward className="w-5 h-5" />
           </button>
 
-          {/* Volume slider */}
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.02}
-            value={muted ? 0 : volume}
-            onChange={(e) => {
-              const v = parseFloat(e.target.value);
-              setVolume(v);
-              if (v > 0) setMuted(false);
-            }}
-            className="w-24 accent-primary cursor-pointer"
-          />
+          {/* Mute + Volume */}
+          <button onClick={() => setMuted(m => !m)} className="text-white/80 hover:text-white transition-colors">
+            {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <input type="range" min={0} max={1} step={0.02} value={muted ? 0 : volume}
+            onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
+            className="w-20 accent-primary cursor-pointer hidden sm:block" />
+
+          {/* Time */}
+          <span className="text-white/70 text-xs font-mono tabular-nums ml-1 hidden sm:block">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
 
           <div className="flex-1" />
 
@@ -245,18 +330,13 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
                     <button onClick={() => setShowSubPicker(false)} className="text-white/50 hover:text-white text-xs">✕</button>
                   </div>
                   <div className="p-1.5 space-y-0.5 max-h-60 overflow-y-auto">
-                    <button
-                      onClick={() => { setActiveSub(-1); setShowSubPicker(false); }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${activeSub === -1 ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}
-                    >
+                    <button onClick={() => { setActiveSub(-1); setShowSubPicker(false); }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${activeSub === -1 ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}>
                       Off
                     </button>
                     {subtitles.map(s => (
-                      <button
-                        key={s.index}
-                        onClick={() => { setActiveSub(s.index); setShowSubPicker(false); }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${activeSub === s.index ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}
-                      >
+                      <button key={s.index} onClick={() => { setActiveSub(s.index); setShowSubPicker(false); }}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${activeSub === s.index ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}>
                         {s.label}
                       </button>
                     ))}
@@ -266,11 +346,15 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
             </div>
           )}
 
+          {/* PiP */}
+          {typeof document !== 'undefined' && document.pictureInPictureEnabled && (
+            <button onClick={togglePip} className={`text-white/70 hover:text-white transition-colors ${pip ? 'text-primary' : ''}`}>
+              <PictureInPicture2 className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Fullscreen */}
-          <button
-            onClick={() => videoRef.current?.requestFullscreen?.()}
-            className="text-white/70 hover:text-white transition-colors"
-          >
+          <button onClick={() => videoRef.current?.requestFullscreen?.()} className="text-white/70 hover:text-white transition-colors">
             <Maximize className="w-5 h-5" />
           </button>
         </div>

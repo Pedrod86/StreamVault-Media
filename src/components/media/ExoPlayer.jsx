@@ -79,6 +79,21 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
     return () => { v.removeEventListener('enterpictureinpicture', enter); v.removeEventListener('leavepictureinpicture', leave); };
   }, []);
 
+  // MediaSession API — lock screen / notification controls on Android Chrome
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({ title: title || 'StreamVault' });
+    navigator.mediaSession.setActionHandler('play', () => videoRef.current?.play());
+    navigator.mediaSession.setActionHandler('pause', () => videoRef.current?.pause());
+    navigator.mediaSession.setActionHandler('seekbackward', () => skip(-10));
+    navigator.mediaSession.setActionHandler('seekforward', () => skip(10));
+    return () => {
+      ['play','pause','seekbackward','seekforward'].forEach(a => {
+        try { navigator.mediaSession.setActionHandler(a, null); } catch(_) {}
+      });
+    };
+  }, [title, skip]);
+
   const flash = (side) => {
     setTapFlash(side);
     setTimeout(() => setTapFlash(null), 600);
