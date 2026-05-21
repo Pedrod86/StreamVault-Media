@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import StreamVaultLogo from '@/components/StreamVaultLogo';
+import { useTvDevice } from '@/hooks/useTvDevice';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const isTV = useTvDevice();
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,6 +34,74 @@ export default function Login() {
   const handleGoogle = () => {
     base44.auth.loginWithProvider('google', '/');
   };
+
+  // On TV: clicking a field label focuses the input so D-pad select works
+  const focusInput = (ref) => {
+    ref.current?.focus();
+    // Trigger native keyboard on Android TV WebView
+    ref.current?.click();
+  };
+
+  if (isTV) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-full max-w-xl px-12 py-10 bg-card rounded-2xl border border-border shadow-2xl">
+          <div className="text-center mb-10">
+            <div className="flex justify-center mb-4">
+              <StreamVaultLogo size="lg" />
+            </div>
+            <h1 className="font-heading font-bold text-3xl text-foreground mt-2">Sign In</h1>
+            <p className="text-muted-foreground text-base mt-1">Use your remote to navigate</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive text-center">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <Label className="text-foreground text-base mb-2 block">Email</Label>
+              <Input
+                ref={emailRef}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-secondary border-border h-14 text-lg px-4 focus:ring-2 focus:ring-primary tv-focusable"
+                tabIndex={1}
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div>
+              <Label className="text-foreground text-base mb-2 block">Password</Label>
+              <Input
+                ref={passwordRef}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-secondary border-border h-14 text-lg px-4 focus:ring-2 focus:ring-primary tv-focusable"
+                tabIndex={2}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-14 bg-primary hover:bg-primary/90 rounded-xl font-bold text-lg tv-focusable"
+              tabIndex={3}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -56,6 +128,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 bg-secondary border-border h-11"
+              autoComplete="email"
               required
             />
           </div>
@@ -67,6 +140,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 bg-secondary border-border h-11"
+              autoComplete="current-password"
               required
             />
           </div>
