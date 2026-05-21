@@ -457,7 +457,7 @@ function IptvPlayer({ url, title, onClose }) {
         </div>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
-            onClick={() => { window.location.href = schemeMap[playerId]; }}
+            onClick={() => { const a = document.createElement('a'); a.href = schemeMap[playerId]; a.click(); }}
             className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2"
           >
             <ExternalLinkIcon className="w-4 h-4" /> Open in {playerLabel}

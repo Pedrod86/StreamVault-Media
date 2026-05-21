@@ -40,12 +40,12 @@ export default function ExternalPlayerView({ item, server, playerId, onClose, on
         <p className="text-white/30 text-xs mt-2 break-all">{streamUrl}</p>
       </div>
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        <button
-          onClick={() => { window.location.href = scheme; }}
+        <a
+          href={scheme}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2"
         >
           <ExternalLink className="w-4 h-4" /> Open in {playerLabel}
-        </button>
+        </a>
         <button
           onClick={() => navigator.clipboard.writeText(streamUrl)}
           className="w-full py-3 rounded-xl bg-white/10 text-white font-medium text-sm"
