@@ -91,11 +91,10 @@ if (cached) {
   scanState.library = cached.library;
   if (!scanState.server && cached.server) scanState.server = cached.server;
   if (!scanState.total && cached.total) scanState.total = cached.total;
-  // Keep startIndex from progress (more reliable) unless cache has more
-  if (cached.library.length > scanState.startIndex) {
-    scanState.startIndex = cached.library.length;
-  }
-  if (!cached.stale && cached.library.length >= cached.total && cached.total > 0) {
+  // startIndex must equal actual fetched item count so the next page request
+  // uses the correct offset — take whichever is larger between progress and cache
+  scanState.startIndex = Math.max(scanState.startIndex, cached.library.length);
+  if (!cached.stale && scanState.startIndex >= scanState.total && scanState.total > 0) {
     scanState.done = true;
   }
 }
@@ -111,6 +110,9 @@ async function fetchPage() {
 
   scanState.loading = true;
   scanState.error = null;
+  // Persist the current index BEFORE the fetch — so if the page is closed
+  // mid-request, we resume from the last *completed* page, not from zero.
+  saveProgress(scanState.startIndex, scanState.total, scanState.server);
   notifyListeners();
 
   try {
@@ -121,8 +123,6 @@ async function fetchPage() {
 
     if (!scanState.server && server) scanState.server = server;
     if (total) scanState.total = total;
-    // Persist progress immediately so a page reload resumes from here
-    saveProgress(scanState.startIndex, scanState.total, scanState.server);
 
     if (items?.length) {
       scanState.library = [...scanState.library, ...items];
@@ -152,16 +152,20 @@ async function fetchPage() {
     scanState.loading = false;
     scanState.fromCache = false;
 
+    // Persist both cache and progress after a successful page
     saveCache(scanState);
-    // Keep progress updated with latest position
     saveProgress(scanState.startIndex, scanState.total, scanState.server);
     notifyListeners();
 
-    // Automatically fetch the next page after a short delay
-    if (!scanState.done) {
+    // Clear progress when scan is fully complete — next run starts fresh
+    if (scanState.done) {
+      clearProgress();
+    } else {
       setTimeout(() => fetchPage(), 500);
     }
   } catch (err) {
+    // Persist the current index so resume starts from the last completed page
+    saveProgress(scanState.startIndex, scanState.total, scanState.server);
     scanState.error = err.message || 'Failed to load library';
     scanState.loading = false;
     notifyListeners();
