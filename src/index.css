@@ -114,6 +114,23 @@ p, h1, h2, h3, h4, h5, h6, span.selectable, .prose, textarea, input {
   user-select: text;
 }
 
+/* ── Android TV / D-pad focus styles ── */
+.tv-focusable:focus {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 2px;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  scale: 1.04;
+}
+
+/* Make all interactive elements focusable via D-pad */
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -7,8 +7,10 @@ import { useAutoSync } from '@/hooks/useAutoSync';
 import { Search, UserCircle2, ArrowLeft } from 'lucide-react';
 import Navbar from './Navbar';
 import BottomNav from './BottomNav';
+import TvSidebar from './TvSidebar';
 import PageTransition from './PageTransition';
 import StreamVaultLogo from '@/components/StreamVaultLogo';
+import { useTvDevice } from '@/hooks/useTvDevice';
 
 const ROOT_TABS = new Set(['/', '/movies', '/emby', '/shows', '/watchlist']);
 
@@ -47,6 +49,23 @@ export default function AppLayout() {
     mq.addEventListener('change', apply);
     return () => mq.removeEventListener('change', apply);
   }, []);
+
+  const isTV = useTvDevice();
+
+  if (isTV) {
+    return (
+      <div className="min-h-screen bg-background font-body flex">
+        <TvSidebar />
+        <main className="flex-1 min-w-0" style={{ marginLeft: '80px' }}>
+          <AnimatePresence mode="wait" initial={false}>
+            <PageTransition key={location.pathname}>
+              <Outlet />
+            </PageTransition>
+          </AnimatePresence>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background font-body">
