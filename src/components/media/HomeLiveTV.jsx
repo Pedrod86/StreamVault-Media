@@ -48,23 +48,24 @@ function IptvPlayerOverlay({ url, title, onClose }) {
 
     // Try HLS.js first (for .ts / m3u8 streams)
     if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      const hls = new Hls({
+        enableWorker: false,
+        lowLatencyMode: true,
+        xhrSetup: (xhr) => { xhr.withCredentials = false; },
+      });
       hlsRef.current = hls;
       hls.loadSource(url);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) {
-          // Fallback: try direct src
           hls.destroy();
           hlsRef.current = null;
           video.src = url;
+          video.load();
           video.play().catch(() => {});
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url;
-      video.play().catch(() => {});
     } else {
       video.src = url;
       video.play().catch(() => {});
@@ -122,7 +123,7 @@ export default function HomeLiveTV() {
   }, [xtreamServer?.id]);
 
   const handlePlay = useCallback((item) => {
-    const url = getLiveStreamUrl(xtreamServer, item.stream_id, 'ts');
+    const url = getLiveStreamUrl(xtreamServer, item.stream_id, 'm3u8');
     setPlaying({ url, name: item.name });
   }, [xtreamServer]);
 

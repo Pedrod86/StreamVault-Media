@@ -203,11 +203,11 @@ export default function IPTV() {
   const handlePlay = (item) => {
     let url = '';
     if (tab === 'live') {
-      url = getLiveStreamUrl(xtreamServer, item.stream_id, 'ts');
+      // Use m3u8 (HLS) for live streams — better compatibility than .ts
+      url = getLiveStreamUrl(xtreamServer, item.stream_id, 'm3u8');
     } else if (tab === 'vod') {
       url = getVodStreamUrl(xtreamServer, item.stream_id, item.container_extension || 'mp4');
     } else {
-      // For series just open VOD for now (series needs episode selection — future enhancement)
       url = getVodStreamUrl(xtreamServer, item.series_id, 'mp4');
     }
     setPlaying({ url, name: item.name, id: item.stream_id || item.series_id });
@@ -377,7 +377,13 @@ function IptvPlayer({ url, title, onClose }) {
     const video = videoRef.current;
     if (!video || !url) return;
     if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      const hls = new Hls({
+        enableWorker: false,
+        lowLatencyMode: true,
+        xhrSetup: (xhr) => {
+          xhr.withCredentials = false;
+        },
+      });
       hlsRef.current = hls;
       hls.loadSource(url);
       hls.attachMedia(video);
@@ -386,14 +392,14 @@ function IptvPlayer({ url, title, onClose }) {
         if (data.fatal) {
           hls.destroy();
           hlsRef.current = null;
+          // Last resort: try native video src
           video.src = url;
+          video.load();
           video.play().catch(() => {});
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url;
-      video.play().catch(() => {});
     } else {
+      // Safari / native HLS support
       video.src = url;
       video.play().catch(() => {});
     }
