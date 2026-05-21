@@ -13,7 +13,7 @@ import StreamVaultLogo from '@/components/StreamVaultLogo';
 import { useTvDevice } from '@/hooks/useTvDevice';
 import { runScan } from '@/lib/embyScanState';
 
-const ROOT_TABS = new Set(['/', '/emby', '/watchlist', '/search', '/settings', '/discover']);
+const ROOT_TABS = new Set(['/', '/emby', '/watchlist', '/search', '/settings', '/discover', '/iptv']);
 
 export default function AppLayout() {
   const location = useLocation();

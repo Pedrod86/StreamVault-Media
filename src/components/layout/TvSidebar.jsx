@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Film, Tv, BookmarkPlus, Database, Search,
   History, Compass, LayoutGrid, Zap, Server, Settings,
-  ChevronRight, LogOut
+  ChevronRight, LogOut, Radio
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
@@ -13,6 +13,7 @@ const LINKS = [
   { to: '/',          label: 'Home',       icon: Home },
   { to: '/search',    label: 'Search',     icon: Search },
   { to: '/emby',      label: 'Library',    icon: Database },
+  { to: '/iptv',      label: 'IPTV',       icon: Radio },
   { to: '/watchlist', label: 'My List',    icon: BookmarkPlus },
   { to: '/discover',  label: 'Discover',   icon: Compass },
   { to: '/settings',  label: 'Settings',   icon: Settings },

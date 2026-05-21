@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Database, BookmarkPlus, Search, Settings } from 'lucide-react';
+import { Home, Database, BookmarkPlus, Radio, Settings } from 'lucide-react';
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/emby', label: 'Library', icon: Database },
-  { to: '/search', label: 'Search', icon: Search },
+  { to: '/iptv', label: 'IPTV', icon: Radio },
   { to: '/watchlist', label: 'My List', icon: BookmarkPlus },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

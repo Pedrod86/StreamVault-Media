@@ -1,0 +1,394 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { Radio, Search, Play, Tv, Film, Star, X, Loader2, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
+import {
+  getLiveStreams, getLiveCategories,
+  getVodStreams, getVodCategories,
+  getSeriesStreams, getSeriesCategories,
+  getLiveStreamUrl, getVodStreamUrl,
+} from '@/lib/xtreamApi';
+import EmbyVideoPlayer from '@/components/media/EmbyVideoPlayer';
+
+const TABS = [
+  { id: 'live', label: 'Live TV', icon: Radio },
+  { id: 'vod', label: 'Movies', icon: Film },
+  { id: 'series', label: 'Series', icon: Tv },
+];
+
+function ChannelCard({ item, onPlay }) {
+  return (
+    <div
+      className="cursor-pointer group flex flex-col"
+      onClick={() => onPlay(item)}
+    >
+      <div className="relative rounded-xl overflow-hidden bg-secondary aspect-video mb-2 flex items-center justify-center">
+        {item.stream_icon ? (
+          <img
+            src={item.stream_icon}
+            alt={item.name}
+            className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <Radio className="w-8 h-8 text-muted-foreground/40" />
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+            <Play className="w-5 h-5 fill-white text-white ml-0.5" />
+          </div>
+        </div>
+        <div className="absolute top-2 left-2">
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/90 text-white">LIVE</span>
+        </div>
+      </div>
+      <p className="text-xs text-foreground font-medium truncate leading-tight">{item.name}</p>
+    </div>
+  );
+}
+
+function MediaCard({ item, onPlay, showRating }) {
+  return (
+    <div className="cursor-pointer group flex flex-col" onClick={() => onPlay(item)}>
+      <div className="relative rounded-xl overflow-hidden bg-secondary aspect-[2/3] mb-2">
+        {item.stream_icon ? (
+          <img
+            src={item.stream_icon}
+            alt={item.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={e => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Film className="w-8 h-8 text-muted-foreground/40" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+            <Play className="w-5 h-5 fill-white text-white ml-0.5" />
+          </div>
+        </div>
+        {showRating && item.rating && parseFloat(item.rating) > 0 && (
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 rounded-full px-1.5 py-0.5">
+            <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+            <span className="text-white text-[10px] font-medium">{parseFloat(item.rating).toFixed(1)}</span>
+          </div>
+        )}
+      </div>
+      <p className="text-xs text-foreground font-medium truncate leading-tight">{item.name}</p>
+      {item.year && <p className="text-[10px] text-muted-foreground mt-0.5">{item.year}</p>}
+    </div>
+  );
+}
+
+function CategoryRow({ title, items, tab, onPlay }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!items.length) return null;
+  const shown = expanded ? items : items.slice(0, 12);
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between px-4 sm:px-6 mb-3">
+        <h2 className="font-heading font-bold text-sm text-foreground">{title}</h2>
+        <span className="text-xs text-muted-foreground">{items.length}</span>
+      </div>
+      <div className={tab === 'live'
+        ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 px-4 sm:px-6'
+        : 'flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2'
+      } style={tab !== 'live' ? { scrollbarWidth: 'none' } : {}}>
+        {shown.map(item => tab === 'live'
+          ? <ChannelCard key={item.stream_id || item.num} item={item} onPlay={onPlay} />
+          : <div key={item.stream_id || item.series_id} className="shrink-0 w-[130px] sm:w-[150px]">
+              <MediaCard item={item} onPlay={onPlay} showRating />
+            </div>
+        )}
+      </div>
+      {items.length > 12 && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="mx-4 sm:mx-6 mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {expanded ? <><ChevronDown className="w-3 h-3" />Show less</> : <><ChevronRight className="w-3 h-3" />Show all {items.length}</>}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function IPTV() {
+  const [tab, setTab] = useState('live');
+  const [search, setSearch] = useState('');
+  const [activeCat, setActiveCat] = useState('All');
+  const [playing, setPlaying] = useState(null); // { url, name }
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [streams, setStreams] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  const { data: servers = [] } = useQuery({
+    queryKey: ['mediaServers'],
+    queryFn: () => base44.entities.MediaServer.list('-created_date'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const xtreamServer = servers.find(s => s.server_type === 'xtream');
+
+  // Load streams whenever tab or server changes
+  useEffect(() => {
+    if (!xtreamServer) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setStreams([]);
+    setCategories([]);
+    setActiveCat('All');
+
+    const loadData = async () => {
+      try {
+        let cats = [], items = [];
+        if (tab === 'live') {
+          [cats, items] = await Promise.all([getLiveCategories(xtreamServer), getLiveStreams(xtreamServer)]);
+        } else if (tab === 'vod') {
+          [cats, items] = await Promise.all([getVodCategories(xtreamServer), getVodStreams(xtreamServer)]);
+        } else {
+          [cats, items] = await Promise.all([getSeriesCategories(xtreamServer), getSeriesStreams(xtreamServer)]);
+        }
+        if (!cancelled) {
+          setCategories(cats || []);
+          setStreams(items || []);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadData();
+    return () => { cancelled = true; };
+  }, [tab, xtreamServer?.id]);
+
+  const filtered = useMemo(() => {
+    let items = streams;
+    if (activeCat !== 'All') {
+      const cat = categories.find(c => c.category_name === activeCat);
+      if (cat) items = items.filter(i => String(i.category_id) === String(cat.category_id));
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      items = items.filter(i => i.name?.toLowerCase().includes(q));
+    }
+    return items;
+  }, [streams, activeCat, search, categories]);
+
+  // Group by category when not filtered
+  const grouped = useMemo(() => {
+    if (search.trim() || activeCat !== 'All') return null;
+    const map = {};
+    const catById = {};
+    categories.forEach(c => { catById[String(c.category_id)] = c.category_name; });
+    streams.forEach(item => {
+      const catName = catById[String(item.category_id)] || 'Other';
+      if (!map[catName]) map[catName] = [];
+      map[catName].push(item);
+    });
+    return Object.entries(map).sort((a, b) => b[1].length - a[1].length);
+  }, [streams, categories, search, activeCat]);
+
+  const handlePlay = (item) => {
+    let url = '';
+    if (tab === 'live') {
+      url = getLiveStreamUrl(xtreamServer, item.stream_id, 'ts');
+    } else if (tab === 'vod') {
+      url = getVodStreamUrl(xtreamServer, item.stream_id, item.container_extension || 'mp4');
+    } else {
+      // For series just open VOD for now (series needs episode selection — future enhancement)
+      url = getVodStreamUrl(xtreamServer, item.series_id, 'mp4');
+    }
+    setPlaying({ url, name: item.name, id: item.stream_id || item.series_id });
+  };
+
+  // Fake server object for EmbyVideoPlayer compatibility
+  const fakeServer = xtreamServer ? { server_url: '', api_token: '' } : null;
+  const fakeItem = playing ? {
+    id: playing.id,
+    title: playing.name,
+    _directUrl: playing.url,
+  } : null;
+
+  if (!xtreamServer) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 px-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center">
+          <Radio className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h2 className="font-heading font-bold text-xl text-foreground">No IPTV Server</h2>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          Connect an Xtream Codes IPTV server to browse your playlist here.
+        </p>
+        <Link
+          to="/connect-server"
+          className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-xl px-5 py-2.5 text-sm font-semibold"
+        >
+          <Radio className="w-4 h-4" /> Connect IPTV
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-2 pb-24">
+      {/* Header */}
+      <div className="px-4 sm:px-6 pt-4 mb-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Radio className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h1 className="font-heading font-bold text-lg text-foreground">IPTV</h1>
+          <p className="text-xs text-muted-foreground">{xtreamServer.server_name || xtreamServer.server_url}</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 px-4 sm:px-6 mb-4">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              tab === id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" />{label}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="px-4 sm:px-6 mb-4 relative">
+        <Search className="absolute left-7 sm:left-9 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${tab === 'live' ? 'channels' : tab === 'vod' ? 'movies' : 'series'}…`}
+          className="pl-9 bg-secondary border-border rounded-xl"
+        />
+        {search && (
+          <button className="absolute right-7 sm:right-9 top-1/2 -translate-y-1/2" onClick={() => setSearch('')}>
+            <X className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* Category pills */}
+      {!loading && categories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto px-4 sm:px-6 pb-3 mb-2" style={{ scrollbarWidth: 'none' }}>
+          <button
+            onClick={() => setActiveCat('All')}
+            className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${activeCat === 'All' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            All
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat.category_id}
+              onClick={() => setActiveCat(cat.category_name)}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${activeCat === cat.category_name ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+            >
+              {cat.category_name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="px-4 sm:px-6 space-y-6 mt-2">
+          {[1, 2, 3].map(i => (
+            <div key={i}>
+              <Skeleton className="h-4 w-32 mb-3 bg-secondary" />
+              <div className={tab === 'live' ? 'grid grid-cols-3 sm:grid-cols-6 gap-3' : 'flex gap-3'}>
+                {[1,2,3,4,5,6].map(j => (
+                  <Skeleton key={j} className={`rounded-xl bg-secondary shrink-0 ${tab === 'live' ? 'aspect-video' : 'w-[130px] h-[200px]'}`} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="mx-4 sm:mx-6 flex items-center gap-3 bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-sm text-destructive">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Grouped rows (default view) */}
+      {!loading && !error && grouped && (
+        <div>
+          {grouped.map(([catName, items]) => (
+            <CategoryRow key={catName} title={catName} items={items} tab={tab} onPlay={handlePlay} />
+          ))}
+        </div>
+      )}
+
+      {/* Filtered flat grid */}
+      {!loading && !error && !grouped && (
+        <div className="px-4 sm:px-6">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">No results found.</div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-3">{filtered.length} results</p>
+              <div className={tab === 'live'
+                ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3'
+                : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3'
+              }>
+                {filtered.map(item => tab === 'live'
+                  ? <ChannelCard key={item.stream_id} item={item} onPlay={handlePlay} />
+                  : <MediaCard key={item.stream_id || item.series_id} item={item} onPlay={handlePlay} showRating />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Player — use a simple HTML5 video overlay for IPTV streams */}
+      {playing && (
+        <IptvPlayer url={playing.url} title={playing.name} onClose={() => setPlaying(null)} />
+      )}
+    </div>
+  );
+}
+
+function IptvPlayer({ url, title, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
+        <button onClick={onClose} className="text-white/80 hover:text-white p-1">
+          <X className="w-6 h-6" />
+        </button>
+        <span className="text-white/80 text-sm font-medium truncate max-w-[200px]">{title}</span>
+        <div className="w-8" />
+      </div>
+      <video
+        src={url}
+        className="w-full h-full object-contain"
+        autoPlay
+        controls
+        playsInline
+        webkit-playsinline="true"
+      />
+    </div>
+  );
+}
