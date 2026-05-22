@@ -11,6 +11,7 @@ function saveCache(state) {
       library: state.library,
       server: state.server,
       total: state.total,
+      done: state.done,
       savedAt: Date.now(),
     }));
   } catch (_) {}
@@ -94,7 +95,10 @@ if (cached) {
   // startIndex must equal actual fetched item count so the next page request
   // uses the correct offset — take whichever is larger between progress and cache
   scanState.startIndex = Math.max(scanState.startIndex, cached.library.length);
-  if (!cached.stale && scanState.startIndex >= scanState.total && scanState.total > 0) {
+  // Restore done flag — if cache is fresh and was marked done, stay done
+  if (!cached.stale && cached.done) {
+    scanState.done = true;
+  } else if (!cached.stale && scanState.startIndex >= scanState.total && scanState.total > 0) {
     scanState.done = true;
   }
 }
