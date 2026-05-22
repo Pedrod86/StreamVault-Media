@@ -10,7 +10,6 @@ import LibraryCategories from '../components/dashboard/LibraryCategories';
 import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
 import EmbyMediaRows from '../components/media/EmbyMediaRows';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
-import HomeLiveTV from '../components/media/HomeLiveTV';
 import HomeOrderEditor, { loadHomeOrder, saveHomeOrder } from '../components/layout/HomeOrderEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LayoutGrid } from 'lucide-react';
@@ -159,7 +158,7 @@ export default function Home() {
 
         {activeTab === 'All' && homeOrder.filter(s => !s.hidden).map(section => {
           switch (section.id) {
-            case 'live_tv':       return <HomeLiveTV key={section.id} />;
+            case 'live_tv':       return null;
             case 'continue_emby': return <EmbyContinueWatching key={section.id} />;
             case 'recently_added': return <EmbyRecentlyAdded key={section.id} />;
             case 'emby_rows':     return <EmbyMediaRows key={section.id} />;

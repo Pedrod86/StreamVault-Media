@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Database, Loader2, Radio, Clapperboard, MonitorPlay } from 'lucide-react';
+import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Loader2, Clapperboard, MonitorPlay } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { scanState, runScan } from '@/lib/embyScanState';
-import { getLiveStreams } from '@/lib/xtreamApi';
 
 const IS_4K = (m) =>
   m.tags?.some(t => /4k|2160p|uhd/i.test(t)) ||
@@ -34,12 +33,6 @@ export default function LibraryCategories({ allMedia = [] }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: servers = [] } = useQuery({
-    queryKey: ['mediaServers'],
-    queryFn: () => base44.entities.MediaServer.list('-created_date'),
-    staleTime: 5 * 60 * 1000,
-  });
-
   // Subscribe to the shared Emby scan state (no extra API calls)
   const [embyScan, setEmbyScan] = useState({ ...scanState });
   useEffect(() => {
@@ -60,15 +53,7 @@ export default function LibraryCategories({ allMedia = [] }) {
   const totalWatchSeconds = history.reduce((acc, h) => acc + (h.progress_seconds || 0), 0);
   const inProgressCount = history.filter(h => !h.completed && h.progress_seconds > 0).length;
 
-  // Live streams count from Xtream server
-  const [liveCount, setLiveCount] = useState(null);
-  const xtreamServer = servers?.find(s => s.server_type === 'xtream');
-  useEffect(() => {
-    if (!xtreamServer) return;
-    getLiveStreams(xtreamServer)
-      .then(data => setLiveCount(Array.isArray(data) ? data.length : 0))
-      .catch(() => setLiveCount(0));
-  }, [xtreamServer?.id]);
+
 
   const embyTotal = embyScan.library.length;
   const hasEmby = embyTotal > 0 || embySyncing;
@@ -158,17 +143,7 @@ export default function LibraryCategories({ allMedia = [] }) {
       href: '/history',
       value: inProgressCount,
     },
-    ...(xtreamServer ? [{
-      key: 'live',
-      label: 'Live Streams',
-      icon: Radio,
-      color: 'text-red-400',
-      bg: 'bg-red-400/10',
-      border: 'border-red-400/20',
-      href: '/iptv',
-      value: liveCount === null ? '…' : liveCount.toLocaleString(),
-      live: true,
-    }] : []),
+
   ];
 
   return (
