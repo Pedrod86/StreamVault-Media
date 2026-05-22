@@ -225,7 +225,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const showControls = useCallback(() => {
     setControlsVisible(true);
     clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setControlsVisible(false), 3000);
+    hideTimer.current = setTimeout(() => setControlsVisible(false), 5000);
   }, []);
 
   useEffect(() => {
@@ -302,7 +302,14 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
           setCurrentTime(v.currentTime);
           if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1));
         }}
-        onClick={() => { togglePlay(); showControls(); }}
+        onClick={() => {
+        if (!controlsVisible) {
+          showControls();
+        } else {
+          togglePlay();
+          showControls();
+        }
+      }}
       />
 
       {/* Bottom controls — always visible when paused */}
