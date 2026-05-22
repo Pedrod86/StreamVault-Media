@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 
@@ -305,6 +305,164 @@ function QuickSyncSection() {
   );
 }
 
+const IS_4K = (item) =>
+  item.tags?.some(t => /4k|2160p|uhd/i.test(t)) ||
+  item.title?.match(/\b(4K|UHD|2160p)\b/i);
+
+const IS_KIDS = (item) =>
+  item.genre?.some(g => /kids?|children|family/i.test(g)) ||
+  ['TV-Y', 'TV-G', 'G', 'TV-Y7'].includes(item.content_rating);
+
+const IS_ANIME = (item) =>
+  item.genre?.some(g => /^anime$/i.test(g)) ||
+  item.tags?.some(t => /^anime$/.test(t));
+
+const CATEGORIES = [
+  { id: 'movies',    label: 'Emby Movies',    icon: Film,        color: 'blue',   filter: (i) => i.type === 'Movie' && !IS_4K(i) },
+  { id: 'tv',        label: 'Emby TV Shows',  icon: Tv2,         color: 'purple', filter: (i) => i.type === 'Series' && !IS_4K(i) },
+  { id: '4k-movies', label: 'Emby 4K Movies', icon: Clapperboard, color: 'yellow', filter: (i) => i.type === 'Movie' && IS_4K(i) },
+  { id: '4k-tv',     label: 'Emby 4K TV',     icon: MonitorPlay, color: 'orange', filter: (i) => i.type === 'Series' && IS_4K(i) },
+  { id: 'kids',      label: 'Emby Kids TV',   icon: Baby,        color: 'pink',   filter: (i) => IS_KIDS(i) },
+  { id: 'anime',     label: 'Emby Anime',     icon: Sparkles,    color: 'rose',   filter: (i) => IS_ANIME(i) },
+];
+
+const COLOR_CLASSES = {
+  blue:   { border: 'border-blue-500/40',   text: 'text-blue-400',   hover: 'hover:bg-blue-500/10 hover:border-blue-500',   bg: 'bg-blue-500',   badge: 'bg-blue-500/10 text-blue-400' },
+  purple: { border: 'border-purple-500/40', text: 'text-purple-400', hover: 'hover:bg-purple-500/10 hover:border-purple-500', bg: 'bg-purple-500', badge: 'bg-purple-500/10 text-purple-400' },
+  yellow: { border: 'border-yellow-500/40', text: 'text-yellow-400', hover: 'hover:bg-yellow-500/10 hover:border-yellow-500', bg: 'bg-yellow-500', badge: 'bg-yellow-500/10 text-yellow-400' },
+  orange: { border: 'border-orange-500/40', text: 'text-orange-400', hover: 'hover:bg-orange-500/10 hover:border-orange-500', bg: 'bg-orange-500', badge: 'bg-orange-500/10 text-orange-400' },
+  pink:   { border: 'border-pink-500/40',   text: 'text-pink-400',   hover: 'hover:bg-pink-500/10 hover:border-pink-500',   bg: 'bg-pink-500',   badge: 'bg-pink-500/10 text-pink-400' },
+  rose:   { border: 'border-rose-500/40',   text: 'text-rose-400',   hover: 'hover:bg-rose-500/10 hover:border-rose-500',   bg: 'bg-rose-500',   badge: 'bg-rose-500/10 text-rose-400' },
+};
+
+function CategorySyncSection() {
+  const queryClient = useQueryClient();
+  const [statuses, setStatuses] = useState({}); // { [categoryId]: 'idle' | 'running' | 'done' | 'error' }
+  const [stats, setStats] = useState({});       // { [categoryId]: { created, updated, fetched } }
+  const [errors, setErrors] = useState({});
+
+  const { data: servers = [] } = useQuery({
+    queryKey: ['mediaServers'],
+    queryFn: () => base44.entities.MediaServer.list('-created_date'),
+  });
+
+  const embyServers = servers.filter(s => s.server_type === 'emby' && s.is_active !== false);
+
+  const runCategory = async (cat) => {
+    if (embyServers.length === 0) return;
+    setStatuses(s => ({ ...s, [cat.id]: 'running' }));
+    setStats(s => ({ ...s, [cat.id]: { fetched: 0, created: 0, updated: 0 } }));
+    setErrors(e => ({ ...e, [cat.id]: null }));
+
+    try {
+      for (const server of embyServers) {
+        // Fetch full library
+        let startIndex = 0;
+        let allItems = [];
+        while (true) {
+          const res = await base44.functions.invoke('embyLibrary', { startIndex, serverId: server.id });
+          if (res.data?.error) throw new Error(res.data.error);
+          const { items, hasMore } = res.data;
+          if (items?.length) allItems = [...allItems, ...items];
+          if (!hasMore || !items?.length) break;
+          startIndex += items.length;
+        }
+
+        // Filter to this category
+        const filtered = allItems.filter(cat.filter);
+        setStats(s => ({ ...s, [cat.id]: { ...s[cat.id], fetched: filtered.length } }));
+
+        if (filtered.length > 0) {
+          const dbItems = filtered.map(item => ({
+            title: item.title,
+            media_type: item.type === 'Series' ? 'tv_show' : 'movie',
+            description: item.overview || '',
+            year: item.year || undefined,
+            rating: item.rating || undefined,
+            duration_minutes: item.duration || undefined,
+            poster_url: item.posterUrl || undefined,
+            backdrop_url: item.backdropUrl || undefined,
+            video_url: item.streamUrl || undefined,
+            genre: item.genres || [],
+            tags: ['emby'],
+          }));
+
+          const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
+          setStats(s => ({ ...s, [cat.id]: {
+            fetched: filtered.length,
+            created: res2.data?.created || 0,
+            updated: res2.data?.updated || 0,
+          }}));
+        }
+      }
+
+      setStatuses(s => ({ ...s, [cat.id]: 'done' }));
+      queryClient.invalidateQueries({ queryKey: ['media'] });
+    } catch (e) {
+      setErrors(err => ({ ...err, [cat.id]: e.message }));
+      setStatuses(s => ({ ...s, [cat.id]: 'error' }));
+    }
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }} className="space-y-4 p-5 rounded-xl bg-card border border-border">
+      <div className="flex items-center gap-2 mb-1">
+        <LayoutGrid className="w-4 h-4 text-accent" />
+        <h2 className="font-heading font-semibold text-foreground">Quick Sync by Category</h2>
+      </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Sync individual categories from your Emby library into the database.
+      </p>
+
+      {embyServers.length === 0 && (
+        <p className="text-sm text-muted-foreground py-1">No active Emby servers found.</p>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {CATEGORIES.map(cat => {
+          const st = statuses[cat.id] || 'idle';
+          const s = stats[cat.id];
+          const err = errors[cat.id];
+          const c = COLOR_CLASSES[cat.color];
+          const Icon = cat.icon;
+
+          return (
+            <div key={cat.id} className={`p-3 rounded-xl border ${c.border} bg-secondary/30 space-y-2`}>
+              <div className="flex items-center gap-2">
+                <Icon className={`w-4 h-4 ${c.text} shrink-0`} />
+                <span className="text-sm font-medium text-foreground">{cat.label}</span>
+              </div>
+
+              {st === 'running' && (
+                <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
+                  <div className={`h-full ${c.bg} rounded-full animate-pulse w-full`} />
+                </div>
+              )}
+              {st === 'done' && s && (
+                <p className="text-[11px] text-green-400">{s.created} added, {s.updated} updated ({s.fetched} fetched)</p>
+              )}
+              {st === 'error' && err && (
+                <p className="text-[11px] text-destructive truncate">{err}</p>
+              )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                className={`w-full h-8 text-xs border ${c.border} ${c.text} ${c.hover} gap-1.5`}
+                onClick={() => runCategory(cat)}
+                disabled={st === 'running' || embyServers.length === 0}
+              >
+                <RefreshCw className={`w-3 h-3 ${st === 'running' ? 'animate-spin' : ''}`} />
+                {st === 'running' ? 'Syncing…' : 'Sync'}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
 export default function Settings() {
   const queryClient = useQueryClient();
 
@@ -529,6 +687,9 @@ export default function Settings() {
 
       {/* ── Quick Sync ── */}
       <QuickSyncSection />
+
+      {/* ── Category Sync ── */}
+      <CategorySyncSection />
 
       {/* ── TVDB Bulk Enrich ── */}
       <TvdbEnrichSection />
