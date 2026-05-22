@@ -39,6 +39,7 @@ export default function VideoPlayer({ src, title, poster, onClose, onProgress, s
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
+  const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
@@ -173,13 +174,13 @@ export default function VideoPlayer({ src, title, poster, onClose, onProgress, s
     setSubtitles(tracks);
   };
 
-  // ── Volume sync ───────────────────────────────────────────────────────────
+  // ── Volume sync (desktop only — mobile OS controls volume hardware) ───────
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.volume = volume;
+    if (!isMobile) v.volume = volume;
     v.muted = muted;
-  }, [volume, muted]);
+  }, [volume, muted, isMobile]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   const skip = useCallback((secs) => {
@@ -427,14 +428,16 @@ export default function VideoPlayer({ src, title, poster, onClose, onProgress, s
               <Btn onClick={() => { skip(-10); flash('left'); }}><SkipBack className="w-4 h-4" /></Btn>
               <Btn onClick={() => { skip(10); flash('right'); }}><SkipForward className="w-4 h-4" /></Btn>
 
-              {/* Volume */}
+              {/* Volume — slider on desktop, mute toggle only on mobile */}
               <div className="flex items-center gap-1">
                 <Btn onClick={toggleMute}>
                   {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Btn>
-                <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                  onChange={e => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
-                  className="w-16 sm:w-20 accent-primary cursor-pointer" />
+                {!isMobile && (
+                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                    onChange={e => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
+                    className="w-16 sm:w-20 accent-primary cursor-pointer" />
+                )}
               </div>
 
               <span className="text-white/80 text-xs font-mono tabular-nums ml-1 hidden sm:block">

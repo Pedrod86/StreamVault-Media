@@ -21,6 +21,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const [showPicker, setShowPicker] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
+  const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [codecLabel, setCodecLabel] = useState('');
   const [subtitles, setSubtitles] = useState([]); // { index, label, language }
   const [activeSub, setActiveSub] = useState(-1); // -1 = off
@@ -179,13 +180,13 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
     };
   }, [playerId, hlsUrl, dashUrl, directUrl]);
 
-  // Sync volume to video element
+  // Sync volume to video element (desktop only — mobile OS controls volume hardware)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    video.volume = volume;
+    if (!isMobile) video.volume = volume;
     video.muted = muted;
-  }, [volume, muted]);
+  }, [volume, muted, isMobile]);
 
   // Auto-hide controls after 3s of inactivity
   const showControls = useCallback(() => {
@@ -297,13 +298,15 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
             <SkipForward className="w-5 h-5" />
           </button>
 
-          {/* Mute + Volume */}
+          {/* Mute + Volume — slider on desktop only (mobile OS controls volume) */}
           <button onClick={() => setMuted(m => !m)} className="text-white/80 hover:text-white transition-colors">
             {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
-          <input type="range" min={0} max={1} step={0.02} value={muted ? 0 : volume}
-            onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
-            className="w-20 accent-primary cursor-pointer" />
+          {!isMobile && (
+            <input type="range" min={0} max={1} step={0.02} value={muted ? 0 : volume}
+              onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
+              className="w-20 accent-primary cursor-pointer" />
+          )}
 
           {/* Time */}
           <span className="text-white/70 text-xs font-mono tabular-nums ml-1 hidden sm:block">
