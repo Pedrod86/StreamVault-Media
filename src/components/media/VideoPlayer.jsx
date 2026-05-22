@@ -428,15 +428,13 @@ export default function VideoPlayer({ src, title, poster, onClose, onProgress, s
               <Btn onClick={() => { skip(10); flash('right'); }}><SkipForward className="w-4 h-4" /></Btn>
 
               {/* Volume */}
-              <div className="flex items-center gap-1 group/vol">
+              <div className="flex items-center gap-1">
                 <Btn onClick={toggleMute}>
                   {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Btn>
-                <div className="w-0 overflow-hidden group-hover/vol:w-20 transition-all duration-200 hidden sm:block">
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                    onChange={e => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
-                    className="w-20 accent-primary cursor-pointer" />
-                </div>
+                <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                  onChange={e => { const v = parseFloat(e.target.value); setVolume(v); if (v > 0) setMuted(false); }}
+                  className="w-16 sm:w-20 accent-primary cursor-pointer" />
               </div>
 
               <span className="text-white/80 text-xs font-mono tabular-nums ml-1 hidden sm:block">

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Database, Zap, LayoutGrid, History } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 
@@ -177,6 +177,130 @@ function TvdbEnrichSection() {
           </Button>
         )}
       </div>
+    </motion.section>
+  );
+}
+
+function QuickSyncSection() {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState('idle'); // idle | running | done | error
+  const [stats, setStats] = useState({ fetched: 0, created: 0, updated: 0 });
+  const [error, setError] = useState(null);
+
+  const { data: servers = [] } = useQuery({
+    queryKey: ['mediaServers'],
+    queryFn: () => base44.entities.MediaServer.list('-created_date'),
+  });
+
+  const embyServers = servers.filter(s => s.server_type === 'emby' && s.is_active !== false);
+
+  const run = async () => {
+    if (embyServers.length === 0) return;
+    setStatus('running');
+    setStats({ fetched: 0, created: 0, updated: 0 });
+    setError(null);
+
+    let totalFetched = 0, totalCreated = 0, totalUpdated = 0;
+
+    try {
+      for (const server of embyServers) {
+        // Fetch all items from Emby via the existing embyLibrary function (paginated)
+        let startIndex = 0;
+        let allItems = [];
+        while (true) {
+          const res = await base44.functions.invoke('embyLibrary', { startIndex, serverId: server.id });
+          if (res.data?.error) throw new Error(res.data.error);
+          const { items, hasMore } = res.data;
+          if (items?.length) allItems = [...allItems, ...items];
+          if (!hasMore || !items?.length) break;
+          startIndex += items.length;
+        }
+
+        totalFetched += allItems.length;
+        setStats(s => ({ ...s, fetched: totalFetched }));
+
+        if (allItems.length > 0) {
+          // Map to DB format
+          const dbItems = allItems.map(item => ({
+            title: item.title,
+            media_type: item.type === 'Series' ? 'tv_show' : 'movie',
+            description: item.overview || '',
+            year: item.year || undefined,
+            rating: item.rating || undefined,
+            duration_minutes: item.duration || undefined,
+            poster_url: item.posterUrl || undefined,
+            backdrop_url: item.backdropUrl || undefined,
+            video_url: item.streamUrl || undefined,
+            genre: item.genres || [],
+            tags: ['emby'],
+          }));
+
+          const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
+          totalCreated += res2.data?.created || 0;
+          totalUpdated += res2.data?.updated || 0;
+          setStats({ fetched: totalFetched, created: totalCreated, updated: totalUpdated });
+        }
+      }
+
+      setStatus('done');
+      queryClient.invalidateQueries({ queryKey: ['media'] });
+    } catch (e) {
+      setError(e.message);
+      setStatus('error');
+    }
+  };
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="space-y-4 p-5 rounded-xl bg-card border border-border">
+      <div className="flex items-center gap-2 mb-1">
+        <Zap className="w-4 h-4 text-yellow-400" />
+        <h2 className="font-heading font-semibold text-foreground">Quick Sync</h2>
+      </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Fetches your Emby library and adds only missing items to your database. Fast and non-destructive.
+      </p>
+
+      {embyServers.length === 0 && (
+        <p className="text-sm text-muted-foreground py-1">No active Emby servers found. Add one via <span className="text-primary">Connections</span>.</p>
+      )}
+
+      {status === 'running' && (
+        <div className="space-y-2">
+          <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+            <div className="h-full bg-yellow-500 rounded-full animate-pulse w-full" />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Fetched {stats.fetched} items… {stats.created} new, {stats.updated} updated
+          </p>
+        </div>
+      )}
+
+      {status === 'done' && (
+        <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 rounded-lg px-3 py-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{stats.created} new items added, {stats.updated} updated ({stats.fetched} total fetched).</span>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <Button
+        variant="outline"
+        className="w-full h-11 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 gap-2"
+        onClick={run}
+        disabled={status === 'running' || embyServers.length === 0}
+      >
+        {status === 'running' ? (
+          <><RefreshCw className="w-4 h-4 animate-spin" />Syncing…</>
+        ) : (
+          <><Zap className="w-4 h-4" />Quick Sync Missing Items</>
+        )}
+      </Button>
     </motion.section>
   );
 }
@@ -402,6 +526,9 @@ export default function Settings() {
           </div>
         )}
       </motion.section>
+
+      {/* ── Quick Sync ── */}
+      <QuickSyncSection />
 
       {/* ── TVDB Bulk Enrich ── */}
       <TvdbEnrichSection />
