@@ -38,7 +38,8 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const base = server?.server_url?.replace(/\/$/, '') || '';
   const token = server?.api_token || '';
 
-  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus&SubtitleMethod=Encode&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true&VideoBitDepth=10`;
+  const subParam = activeSub !== -1 ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode` : '&SubtitleMethod=Encode';
+  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac,mp3,ac3,eac3,flac,opus${subParam}&TranscodingMaxAudioChannels=2&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true&VideoBitDepth=10`;
   const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac,ac3,eac3,flac,opus&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true`;
   const directUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=true`;
 
@@ -113,15 +114,46 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
     else await v.requestPictureInPicture?.();
   }, [pip]);
 
-  // Apply subtitle track to video element (for direct/HLS native tracks)
+  // When subtitle changes, reload HLS/DASH stream with new subtitle index baked in
+  // (direct play doesn't transcode so subtitle switching isn't applicable there)
+  const savedPosRef = useRef(0);
   useEffect(() => {
+    if (playerId === 'direct' || ['mpv', 'vlc', 'infuse', 'mx'].includes(playerId)) return;
     const video = videoRef.current;
     if (!video) return;
-    const tracks = video.textTracks;
-    for (let i = 0; i < tracks.length; i++) {
-      tracks[i].mode = tracks[i].id === String(activeSub) ? 'showing' : 'hidden';
+    savedPosRef.current = video.currentTime || 0;
+    // Destroy existing players — the source useEffect will pick up the new hlsUrl
+    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    if (dashRef.current) { dashRef.current.destroy(); dashRef.current = null; }
+
+    if (playerId === 'dash') {
+      // Rebuild dash with updated url
+      const player = dashjs.MediaPlayer().create();
+      dashRef.current = player;
+      player.initialize(video, dashUrl, true);
+      player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+        if (savedPosRef.current > 2) player.seek(savedPosRef.current);
+      });
+      return;
     }
-  }, [activeSub]);
+    // HLS
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true });
+      hlsRef.current = hls;
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (savedPosRef.current > 2) video.currentTime = savedPosRef.current;
+        video.play().catch(() => {});
+      });
+    } else {
+      video.src = hlsUrl;
+      video.onloadedmetadata = () => {
+        if (savedPosRef.current > 2) video.currentTime = savedPosRef.current;
+        video.play().catch(() => {});
+      };
+    }
+  }, [activeSub]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load video source
   useEffect(() => {
@@ -270,7 +302,7 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
           setCurrentTime(v.currentTime);
           if (v.buffered.length > 0) setBuffered(v.buffered.end(v.buffered.length - 1));
         }}
-        onClick={showControls}
+        onClick={() => { togglePlay(); showControls(); }}
       />
 
       {/* Bottom controls — always visible when paused */}
