@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import EmbyVideoPlayer from '@/components/media/EmbyVideoPlayer';
+import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import { Skeleton } from '@/components/ui/skeleton';
 import { scanState, resetScan, runScan } from '@/lib/embyScanState';
 
@@ -59,6 +60,26 @@ export default function EmbyLibrary() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [playingItem, setPlayingItem] = useState(null);
+  const [browsingItem, setBrowsingItem] = useState(null);
+
+  // Build a title→embyId lookup from the in-memory scan state
+  const embyIdByTitle = useMemo(() => {
+    const map = new Map();
+    scanState.library.forEach(i => {
+      if (i.title) map.set(i.title.toLowerCase().trim(), i.id);
+    });
+    return map;
+  }, [scanProgress]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePlay = (item) => {
+    if (item.media_type === 'tv_show') {
+      // Look up the real Emby ID from in-memory scan state by title
+      const embyId = embyIdByTitle.get(item.title?.toLowerCase().trim());
+      setBrowsingItem({ ...item, embyId });
+    } else {
+      setPlayingItem(item);
+    }
+  };
   const [activeFilter, setActiveFilter] = useState('All');
   const [scanProgress, setScanProgress] = useState({ loading: scanState.loading, done: scanState.done, total: scanState.total, count: scanState.library.length });
 
@@ -235,22 +256,35 @@ export default function EmbyLibrary() {
         <div>
           <p className="text-xs text-muted-foreground px-4 sm:px-6 mb-3">{filtered.length} results for "{search}"</p>
           <div className="flex flex-wrap gap-3 px-4 sm:px-6">
-            {filtered.map(item => <MediaCard key={item.id} item={item} onPlay={setPlayingItem} />)}
+            {filtered.map(item => <MediaCard key={item.id} item={item} onPlay={handlePlay} />)}
           </div>
         </div>
       ) : (
         <div>
           {sections?.map(({ title, items }) => (
-            <MediaRow key={title} title={title} items={items} onPlay={setPlayingItem} />
+            <MediaRow key={title} title={title} items={items} onPlay={handlePlay} />
           ))}
         </div>
       )}
 
-      {playingItem && embyServer && (
-        <EmbyVideoPlayer
-          item={{ ...playingItem, id: playingItem.id, streamUrl: playingItem.video_url }}
+      {playingItem && embyServer && (() => {
+        // Extract real Emby item ID from video_url: .../Videos/{embyId}/stream...
+        const match = playingItem.video_url?.match(/\/Videos\/([^/]+)\/stream/);
+        const embyId = match ? match[1] : playingItem.id;
+        return (
+          <EmbyVideoPlayer
+            item={{ ...playingItem, id: embyId }}
+            server={embyServer}
+            onClose={() => setPlayingItem(null)}
+          />
+        );
+      })()}
+
+      {browsingItem && embyServer && (
+        <EmbySeriesBrowser
+          item={browsingItem}
           server={embyServer}
-          onClose={() => setPlayingItem(null)}
+          onClose={() => setBrowsingItem(null)}
         />
       )}
     </div>
