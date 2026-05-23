@@ -1,127 +1,100 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-// This function now acts as a thin authenticated wrapper.
-// All Emby API calls are made client-side via mediaProxy (which the browser proxies).
-// embySync is only called to write items to the DB with proper user auth context.
-
-const BATCH_WRITE = 50;
+const BATCH = 50;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 Deno.serve(async (req) => {
   const startedAt = new Date().toISOString();
   const t0 = Date.now();
-  let base44Client, parsedServer;
 
   try {
-    base44Client = createClientFromRequest(req);
-    const user = await base44Client.auth.me();
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    parsedServer = body.server;
-    const items = body.items; // pre-fetched items from client via mediaProxy
-    const { server } = body;
+    const server = body.server;
+    const items = body.items; // items must have emby_id in tags or as a field
 
     if (!server) return Response.json({ error: 'Missing server' }, { status: 400 });
-    if (!Array.isArray(items)) return Response.json({ error: 'Missing items array' }, { status: 400 });
-
-    const base44 = base44Client;
-
-    // Load existing media for dedup — paginated
-    const existingMap = new Map();
-    let existingPage = 0;
-    const PAGE_DB = 500;
-    while (true) {
-      const page = await base44.entities.Media.list('-created_date', PAGE_DB, existingPage * PAGE_DB);
-      for (const m of page) existingMap.set(m.title.toLowerCase().trim(), m);
-      if (page.length < PAGE_DB) break;
-      existingPage++;
-      await sleep(400);
+    if (!Array.isArray(items) || items.length === 0) {
+      return Response.json({ success: true, fetched: 0, created: 0, updated: 0 });
     }
 
-    const newItems = [];
-    const updateItems = [];
-
+    // Build a set of emby IDs for this batch (stored as "emby:<id>" tag)
+    const embyIdToItem = new Map();
     for (const item of items) {
-      const key = item.title?.toLowerCase().trim();
-      if (!key) continue;
-      const existing = existingMap.get(key);
-      if (existing) {
-        if (existing.id && item.video_url && !existing.video_url) {
-          updateItems.push({ id: existing.id, video_url: item.video_url });
-        }
-      } else {
-        newItems.push(item);
-        existingMap.set(key, { _sentinel: true });
+      if (item.emby_id) embyIdToItem.set(item.emby_id, item);
+    }
+    const hasEmbyIds = embyIdToItem.size > 0;
+
+    let newItems = items;
+
+    if (hasEmbyIds) {
+      // Fast dedup: check only for emby IDs in this batch
+      // Query existing records that have any of these emby IDs tagged
+      const embyIds = [...embyIdToItem.keys()];
+      const existingEmbyIds = new Set();
+
+      // Query in parallel chunks of 20
+      const CHUNK = 20;
+      for (let i = 0; i < embyIds.length; i += CHUNK) {
+        const chunk = embyIds.slice(i, i + CHUNK);
+        const checks = await Promise.all(
+          chunk.map(eid =>
+            base44.entities.Media.filter({ tags: `emby:${eid}` }, '-created_date', 1)
+              .then(r => r.length > 0 ? eid : null)
+              .catch(() => null)
+          )
+        );
+        checks.forEach(eid => { if (eid) existingEmbyIds.add(eid); });
+        if (i + CHUNK < embyIds.length) await sleep(100);
       }
+
+      newItems = items.filter(item => item.emby_id && !existingEmbyIds.has(item.emby_id));
     }
 
-    // Bulk create new items
+    // Bulk create
     let createdCount = 0;
-    for (let i = 0; i < newItems.length; i += BATCH_WRITE) {
-      await base44.entities.Media.bulkCreate(newItems.slice(i, i + BATCH_WRITE));
-      createdCount += Math.min(BATCH_WRITE, newItems.length - i);
-      await sleep(300);
-    }
-
-    // Update existing items missing video_url
-    let updatedCount = 0;
-    for (let i = 0; i < updateItems.length; i += BATCH_WRITE) {
-      const batch = updateItems.slice(i, i + BATCH_WRITE);
-      await Promise.all(batch.map(u => base44.entities.Media.update(u.id, { video_url: u.video_url })));
-      updatedCount += batch.length;
-      await sleep(300);
+    for (let i = 0; i < newItems.length; i += BATCH) {
+      await base44.entities.Media.bulkCreate(newItems.slice(i, i + BATCH));
+      createdCount += Math.min(BATCH, newItems.length - i);
+      if (i + BATCH < newItems.length) await sleep(200);
     }
 
     const duration = Math.round((Date.now() - t0) / 1000);
 
     await base44.entities.SyncLog.create({
-      server_id: parsedServer?.id || server.id || 'unknown',
-      server_name: server.server_name || 'Emby',
+      server_id: server?.id || 'unknown',
+      server_name: server?.server_name || 'Emby',
       server_type: 'emby',
       status: 'success',
       items_fetched: items.length,
       items_created: createdCount,
-      items_updated: updatedCount,
+      items_updated: 0,
       duration_seconds: duration,
       started_at: startedAt,
     });
 
-    // Post Discord notification if new items were added
     if (createdCount > 0) {
       try {
         await base44.asServiceRole.functions.invoke('discordSyncAlert', {
           data: {
-            server_name: server.server_name || 'Emby',
+            server_name: server?.server_name || 'Emby',
             server_type: 'emby',
             status: 'success',
             items_fetched: items.length,
             items_created: createdCount,
-            items_updated: updatedCount,
+            items_updated: 0,
             duration_seconds: duration,
           }
         });
       } catch (_) {}
     }
 
-    return Response.json({ success: true, fetched: items.length, created: createdCount, updated: updatedCount });
+    return Response.json({ success: true, fetched: items.length, created: createdCount, updated: 0 });
 
   } catch (error) {
-    const duration = Math.round((Date.now() - t0) / 1000);
-    const msg = error.message || String(error);
-    try {
-      if (base44Client) {
-        await base44Client.entities.SyncLog.create({
-          server_id: parsedServer?.id || 'unknown',
-          server_name: parsedServer?.server_name || 'Emby',
-          server_type: 'emby',
-          status: 'error',
-          error_message: msg,
-          duration_seconds: duration,
-          started_at: startedAt,
-        });
-      }
-    } catch (_) {}
-    return Response.json({ error: msg }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 });

@@ -223,6 +223,7 @@ function QuickSyncSection() {
 
           // Sync this page immediately — don't accumulate the whole library
           const dbItems = items.map(item => ({
+            emby_id: item.id,
             title: item.title,
             media_type: item.type === 'Series' ? 'tv_show' : 'movie',
             description: item.overview || '',
@@ -233,7 +234,7 @@ function QuickSyncSection() {
             backdrop_url: item.backdropUrl || undefined,
             video_url: item.streamUrl || undefined,
             genre: item.genres || [],
-            tags: ['emby'],
+            tags: ['emby', `emby:${item.id}`],
           }));
 
           const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
@@ -387,6 +388,7 @@ function CategorySyncSection() {
 
           if (filtered.length > 0) {
             const dbItems = filtered.map(item => ({
+              emby_id: item.id,
               title: item.title,
               media_type: item.type === 'Series' ? 'tv_show' : 'movie',
               description: item.overview || '',
@@ -397,7 +399,7 @@ function CategorySyncSection() {
               backdrop_url: item.backdropUrl || undefined,
               video_url: item.streamUrl || undefined,
               genre: item.genres || [],
-              tags: ['emby'],
+              tags: ['emby', `emby:${item.id}`],
             }));
 
             const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
@@ -570,6 +572,7 @@ export default function Settings() {
           const { items, hasMore } = res.data;
           if (!items?.length) break;
           const dbItems = items.map(item => ({
+            emby_id: item.id,
             title: item.title,
             media_type: item.type === 'Series' ? 'tv_show' : 'movie',
             description: item.overview || '',
@@ -580,7 +583,7 @@ export default function Settings() {
             backdrop_url: item.backdropUrl || undefined,
             video_url: item.streamUrl || undefined,
             genre: item.genres || [],
-            tags: ['emby'],
+            tags: ['emby', `emby:${item.id}`],
           }));
           await base44.functions.invoke('embySync', { server, items: dbItems });
           if (!hasMore) break;
