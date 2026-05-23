@@ -17,7 +17,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const dashRef = useRef(null);
-  const [playerId, setPlayerId] = useState(initialPlayerId || 'direct');
+  const [playerId, setPlayerId] = useState(initialPlayerId || 'hls');
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
 
@@ -33,17 +33,18 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [pip, setPip] = useState(false);
+  const [streamError, setStreamError] = useState(null);
   const hideTimer = useRef(null);
 
   const base = server?.server_url?.replace(/\/$/, '') || '';
   const token = server?.api_token || '';
 
   const subParam = activeSub !== -1 ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode` : '';
-  // HLS: always transcode audio to AAC so browsers can decode AC3/EAC3/DTS/TrueHD
-  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac${subParam}&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&AudioBitRate=320000&TranscodeReasons=AudioCodecNotSupported`;
-  const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true&AudioBitRate=320000`;
-  // Direct: force audio transcode to AAC — critical for AC3/EAC3/DTS/TrueHD which browsers cannot decode
-  const directUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=false&AudioCodec=aac&VideoCodec=h264,hevc,av1,vp9&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&AudioBitRate=320000&TranscodeReasons=AudioCodecNotSupported`;
+  // HLS: transcode audio to AAC (handles AC3/EAC3/DTS/TrueHD), allow video copy for h264/hevc/av1
+  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac,mp3&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&AudioBitRate=320000&MediaSourceId=${item.id}${subParam}`;
+  const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true&AudioBitRate=320000&MediaSourceId=${item.id}`;
+  // Direct: force container to ts so the browser can play it, transcode audio to AAC
+  const directUrl = `${base}/Videos/${item.id}/stream.ts?api_key=${token}&AudioCodec=aac&VideoCodec=h264&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&AudioBitRate=320000&MediaSourceId=${item.id}`;
 
   // Fetch subtitle streams from Emby MediaInfo
   useEffect(() => {
@@ -172,6 +173,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
 
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     if (dashRef.current) { dashRef.current.destroy(); dashRef.current = null; }
+    setStreamError(null);
 
     if (playerId === 'direct') {
       video.src = directUrl;
@@ -195,11 +197,14 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
 
     // HLS mode
     if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true });
+      const hls = new Hls({ enableWorker: true, manifestLoadingMaxRetry: 3, fragLoadingMaxRetry: 3 });
       hlsRef.current = hls;
       hls.loadSource(hlsUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch((_e) => {}); });
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (data.fatal) setStreamError(`Stream error: ${data.details || 'failed to load'}`);
+      });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { setStreamError(null); video.play().catch((_e) => {}); });
       hls.on(Hls.Events.FRAG_PARSED, (_e, data) => {
         const codec = data?.frag?.levelCodec || '';
         const level = hls.levels?.[hls.currentLevel];
@@ -297,6 +302,18 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/50 uppercase">{playerLabel}</span>
         </div>
       </div>
+
+      {/* Stream error overlay */}
+      {streamError && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 gap-4 px-6 text-center">
+          <p className="text-white/60 text-sm">{streamError}</p>
+          <div className="flex gap-3">
+            <button onClick={() => { setStreamError(null); setPlayerId('hls'); }} className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium">Retry HLS</button>
+            <button onClick={() => { setStreamError(null); setPlayerId('direct'); }} className="px-4 py-2 rounded-lg bg-white/10 text-white text-sm font-medium">Try Direct</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 text-white/60 text-sm font-medium">Close</button>
+          </div>
+        </div>
+      )}
 
       {/* Video — no native controls so our custom controls work on Android */}
       <video

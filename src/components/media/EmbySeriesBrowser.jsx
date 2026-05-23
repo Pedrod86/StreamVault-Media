@@ -44,6 +44,7 @@ export default function EmbySeriesBrowser({ item, server, onClose }) {
       <EmbyVideoPlayer
         item={{ ...playingEpisode, id: playingEpisode.id, title: `${item.title} — ${playingEpisode.name}` }}
         server={server}
+        initialPlayerId="hls"
         onClose={() => setPlayingEpisode(null)}
       />
     );
