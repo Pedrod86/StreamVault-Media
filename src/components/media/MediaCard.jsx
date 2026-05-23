@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Star, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function MediaCard({ media, showProgress, progress }) {
+export default function MediaCard({ media, showProgress, progress, disableNavigation }) {
   const progressPercent =
     progress && progress.total_seconds > 0
       ? Math.min(100, Math.round((progress.progress_seconds / progress.total_seconds) * 100))
@@ -18,8 +18,12 @@ export default function MediaCard({ media, showProgress, progress }) {
     ? `${Math.round(remainingSecs / 60)}m left`
     : remainingSecs > 0 ? `<1m left` : null;
 
+  const Wrapper = disableNavigation
+    ? ({ children, className }) => <div className={className}>{children}</div>
+    : ({ children, className }) => <Link to={`/media/${media.id}`} className={className}>{children}</Link>;
+
   return (
-    <Link to={`/media/${media.id}`} className="block group">
+    <Wrapper className="block group">
       <motion.div
         whileHover={{ scale: 1.03, y: -4 }}
         transition={{ duration: 0.2 }}
@@ -90,6 +94,6 @@ export default function MediaCard({ media, showProgress, progress }) {
           </div>
         </div>
       </motion.div>
-    </Link>
+    </Wrapper>
   );
 }

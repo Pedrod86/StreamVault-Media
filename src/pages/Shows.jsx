@@ -4,13 +4,25 @@ import { base44 } from '@/api/base44Client';
 import MediaGrid from '../components/media/MediaGrid';
 import GenreFilter from '../components/media/GenreFilter';
 import PullToRefresh from '../components/layout/PullToRefresh';
+import BulkDeleteBar from '../components/media/BulkDeleteBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2 } from 'lucide-react';
 
 export default function Shows() {
   const queryClient = useQueryClient();
   const [genre, setGenre] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const clearSelection = () => { setSelectedIds(new Set()); setSelectMode(false); };
 
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['shows'] });
@@ -52,7 +64,16 @@ export default function Shows() {
     <PullToRefresh onRefresh={handleRefresh}>
     <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h1 className="font-heading font-bold text-2xl sm:text-3xl text-foreground">TV Shows</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-heading font-bold text-2xl sm:text-3xl text-foreground">TV Shows</h1>
+          <button
+            onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()); }}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${selectMode ? 'bg-destructive/10 border-destructive text-destructive' : 'bg-secondary border-border text-muted-foreground hover:text-foreground'}`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {selectMode ? 'Cancel' : 'Select'}
+          </button>
+        </div>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-40 bg-secondary border-border text-sm">
             <SelectValue />
@@ -76,9 +97,20 @@ export default function Shows() {
             ))}
           </div>
         ) : (
-          <MediaGrid items={filtered} watchHistory={watchHistory} />
+          <MediaGrid
+            items={filtered}
+            watchHistory={watchHistory}
+            selectedIds={selectMode ? selectedIds : undefined}
+            onToggleSelect={selectMode ? toggleSelect : undefined}
+          />
         )}
       </div>
+      <BulkDeleteBar
+        selectedIds={[...selectedIds]}
+        onClearSelection={clearSelection}
+        onSelectAll={() => setSelectedIds(new Set(filtered.map(m => m.id)))}
+        totalCount={filtered.length}
+      />
     </div>
     </PullToRefresh>
   );
