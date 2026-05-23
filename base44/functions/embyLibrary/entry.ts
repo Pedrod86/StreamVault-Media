@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 async function doFetch(url) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timer = setTimeout(() => controller.abort(), 20000);
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
@@ -25,12 +25,10 @@ function buildStreamUrl(base, itemId, token) {
 }
 
 async function resolveUserId(base, token) {
-  // Try /Users/Me first — works for non-admin tokens too
   try {
     const me = await doFetch(`${base}/Users/Me?api_key=${token}`);
     if (me?.Id) return me.Id;
   } catch (_) {}
-  // Fallback: list users (admin tokens only)
   try {
     const users = await doFetch(`${base}/Users?api_key=${token}`);
     const list = Array.isArray(users) ? users : (users?.Items || []);
@@ -48,7 +46,13 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const startIndex = parseInt(body.startIndex || 0);
-    const PAGE = 200;
+    const PAGE = parseInt(body.pageSize || 200);
+    // itemType: 'Movie' | 'Series' | '' (both)
+    const itemType = body.itemType || '';
+    // search: free-text filter
+    const searchTerm = (body.search || '').trim();
+    // genre filter
+    const genreFilter = (body.genre || '').trim();
 
     const servers = await base44.entities.MediaServer.list();
     const server = servers.find(s => s.server_type === 'emby' && s.is_active !== false);
@@ -58,11 +62,23 @@ Deno.serve(async (req) => {
     const token = server.api_token;
     const userId = await resolveUserId(base, token);
 
-    const json = await doFetch(
-      `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
+    const types = itemType ? itemType : 'Movie,Series';
+
+    // sortBy may be "SortName" or "CommunityRating,Descending"
+    const sortBy = (body.sortBy || 'SortName').trim();
+    const sortParts = sortBy.split(',');
+    const sortField = sortParts[0] || 'SortName';
+    const sortOrder = sortParts[1] || 'Ascending';
+
+    let url =
+      `${base}/Users/${userId}/Items?IncludeItemTypes=${types}&Recursive=true` +
       `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
-      `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`
-    );
+      `&SortBy=${sortField}&SortOrder=${sortOrder}&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`;
+
+    if (searchTerm) url += `&SearchTerm=${encodeURIComponent(searchTerm)}`;
+    if (genreFilter) url += `&Genres=${encodeURIComponent(genreFilter)}`;
+
+    const json = await doFetch(url);
 
     const rawItems = json?.Items || [];
     const total = json?.TotalRecordCount || 0;
@@ -76,6 +92,7 @@ Deno.serve(async (req) => {
       duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
       overview: item.Overview || '',
       genres: item.Genres || [],
+      contentRating: item.OfficialRating || null,
       posterUrl: item.ImageTags?.Primary ? buildImageUrl(base, item.Id, token, 'Primary') : null,
       backdropUrl: item.BackdropImageTags?.[0] ? buildImageUrl(base, item.Id, token, 'Backdrop') : null,
       streamUrl: buildStreamUrl(base, item.Id, token),
