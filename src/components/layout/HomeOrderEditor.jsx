@@ -8,10 +8,10 @@ export const DEFAULT_SECTIONS = [
   { id: 'recently_added',    label: 'Recently Added (Emby)' },
   { id: 'emby_rows',         label: 'Emby Library' },
   { id: 'continue_watching', label: 'Continue Watching' },
-  { id: 'local_recent',      label: 'Recently Added' },
+  { id: 'local_recent',      label: 'Recently Added', hidden: true },
   { id: 'anime',             label: 'Anime' },
   { id: 'kids',              label: 'Kids' },
-  { id: 'genres',            label: 'Genres' },
+  { id: 'genres',            label: 'Genres', hidden: true },
   { id: 'recommendations',   label: 'Browse by Theme' },
 ];
 
@@ -23,9 +23,17 @@ export function loadHomeOrder() {
     if (!raw) return DEFAULT_SECTIONS;
     const saved = JSON.parse(raw);
     // Merge: keep saved order/visibility, add any new sections
+    // For sections that were never explicitly toggled, apply current defaults
     const savedIds = new Set(saved.map(s => s.id));
     const merged = [
-      ...saved,
+      ...saved.map(s => {
+        const def = DEFAULT_SECTIONS.find(d => d.id === s.id);
+        // If the saved entry never had hidden set (undefined), use the default
+        if (s.hidden === undefined && def?.hidden !== undefined) {
+          return { ...s, hidden: def.hidden };
+        }
+        return s;
+      }),
       ...DEFAULT_SECTIONS.filter(s => !savedIds.has(s.id)),
     ];
     return merged;
