@@ -13,15 +13,12 @@ import ApiKeysSection from '@/components/settings/ApiKeysSection';
 
 // Predefined colour themes (primary HSL, accent HSL)
 const THEMES = [
-  { label: 'Purple & Cyan',  primary: '262 83% 58%', accent: '199 89% 48%', preview: ['#7c3aed', '#06b6d4'] },
-  { label: 'Red & Orange',   primary: '0 84% 55%',   accent: '25 95% 53%',  preview: ['#ef4444', '#f97316'] },
-  { label: 'Blue & Indigo',  primary: '221 83% 53%', accent: '239 84% 67%', preview: ['#3b82f6', '#6366f1'] },
-  { label: 'Green & Teal',   primary: '142 71% 45%', accent: '173 80% 40%', preview: ['#22c55e', '#14b8a6'] },
-  { label: 'Pink & Rose',    primary: '330 81% 60%', accent: '346 77% 49%', preview: ['#ec4899', '#f43f5e'] },
-  { label: 'Amber & Yellow', primary: '38 92% 50%',  accent: '48 96% 53%',  preview: ['#f59e0b', '#eab308'] },
-  { label: 'Slate (Neutral)',primary: '215 25% 50%', accent: '215 20% 65%', preview: ['#64748b', '#94a3b8'] },
-  { label: '⚡ Cyberpunk',   primary: '300 100% 55%', accent: '57 100% 50%', preview: ['#cc00ff', '#ffee00'], cyberpunk: true },
-  { label: '📺 Sky UK',      primary: '349 100% 46%', accent: '210 100% 56%', preview: ['#e8002d', '#1a8fe8'] },
+  { label: '⚡ Cyberpunk',      primary: '300 100% 55%', accent: '57 100% 50%',  preview: ['#cc00ff', '#ffee00'], cyberpunk: true },
+  { label: '🔥 Neon Inferno',   primary: '0 100% 60%',   accent: '30 100% 55%',  preview: ['#ff1a1a', '#ff8800'] },
+  { label: '🌊 Neon Ocean',     primary: '195 100% 50%', accent: '240 100% 65%', preview: ['#00d4ff', '#4040ff'] },
+  { label: '☢️ Neon Toxic',     primary: '120 100% 50%', accent: '75 100% 50%',  preview: ['#00ff00', '#aaff00'] },
+  { label: '🌸 Neon Sakura',    primary: '320 100% 65%', accent: '280 100% 65%', preview: ['#ff40b0', '#c040ff'] },
+  { label: '🌅 Neon Sunrise',   primary: '45 100% 55%',  accent: '15 100% 58%',  preview: ['#ffcc00', '#ff5500'] },
 ];
 
 const INTERVALS = [
