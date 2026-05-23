@@ -23,6 +23,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
 
   // Always show inline controls regardless of device type
   const [codecLabel, setCodecLabel] = useState('');
+  const [audioCodecLabel, setAudioCodecLabel] = useState('');
   const [subtitles, setSubtitles] = useState([]); // { index, label, language }
   const [activeSub, setActiveSub] = useState(initialSubtitleIndex ?? -1); // -1 = off
   const [showSubPicker, setShowSubPicker] = useState(false);
@@ -38,10 +39,11 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
   const token = server?.api_token || '';
 
   const subParam = activeSub !== -1 ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode` : '';
-  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac,mp3${subParam}&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&AudioBitRate=320000`;
-  const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac,ac3,eac3,flac,opus&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true&AudioBitRate=320000`;
-  // Direct play with audio transcoded to AAC to ensure browser compatibility
-  const directUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=false&AudioCodec=aac,mp3&VideoCodec=h264,hevc,av1,vp9&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&AudioBitRate=320000`;
+  // HLS: always transcode audio to AAC so browsers can decode AC3/EAC3/DTS/TrueHD
+  const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac${subParam}&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&AudioBitRate=320000&TranscodeReasons=AudioCodecNotSupported`;
+  const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true&AudioBitRate=320000`;
+  // Direct: force audio transcode to AAC — critical for AC3/EAC3/DTS/TrueHD which browsers cannot decode
+  const directUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=false&AudioCodec=aac&VideoCodec=h264,hevc,av1,vp9&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&AudioBitRate=320000&TranscodeReasons=AudioCodecNotSupported`;
 
   // Fetch subtitle streams from Emby MediaInfo
   useEffect(() => {
@@ -60,6 +62,13 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
             language: s.Language || '',
           }));
         setSubtitles(subs);
+        // Show original audio codec so user knows why transcoding is happening
+        const audioStream = streams.find(s => s.Type === 'Audio');
+        if (audioStream) {
+          const codec = (audioStream.Codec || '').toUpperCase();
+          const channels = audioStream.Channels ? ` ${audioStream.Channels}ch` : '';
+          setAudioCodecLabel(`${codec}${channels} → AAC`);
+        }
       })
       .catch(() => {});
   }, [item.id, base, token]);
@@ -278,6 +287,9 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
           <span className="text-white/80 text-sm font-medium truncate max-w-[200px]">{item.title}</span>
           {codecLabel && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/60">{codecLabel}</span>
+          )}
+          {audioCodecLabel && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300">{audioCodecLabel}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
