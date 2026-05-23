@@ -270,8 +270,8 @@ export default function EmbyLibrary() {
 
       {playingItem && embyServer && (() => {
         // Try: emby_id field → video_url regex → tags "emby:xxx" → fallback to item.id
-        const tagEmbyId = playingItem.tags?.find(t => t?.startsWith('emby:') && t !== 'emby')?.replace('emby:', '');
-        const urlMatch = playingItem.video_url?.match(/\/Videos\/([^/]+)\//);
+        const tagEmbyId = (playingItem.tags || []).find(t => t?.startsWith('emby:') && t !== 'emby')?.replace('emby:', '');
+        const urlMatch = (playingItem.video_url || '').match(/\/Videos\/([^/]+)\//);
         const embyId = playingItem.emby_id || tagEmbyId || (urlMatch ? urlMatch[1] : null) || playingItem.id;
         return (
           <EmbyVideoPlayer
