@@ -21,8 +21,8 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
   const [showPicker, setShowPicker] = useState(false);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
-  const [showVolume, setShowVolume] = useState(false);
-  const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  // Always show inline controls regardless of device type
   const [codecLabel, setCodecLabel] = useState('');
   const [subtitles, setSubtitles] = useState([]); // { index, label, language }
   const [activeSub, setActiveSub] = useState(-1); // -1 = off
@@ -353,36 +353,17 @@ export default function EmbyVideoPlayer({ item, server, onClose }) {
             <SkipForward className="w-5 h-5" />
           </button>
 
-          {/* Volume control */}
-          <div className="relative flex items-center">
+          {/* Volume control — always inline */}
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => isMobile ? setShowVolume(v => !v) : setMuted(m => !m)}
+              onClick={() => setMuted(m => !m)}
               className="text-white/80 hover:text-white transition-colors"
             >
               {muted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
-            {/* Desktop: horizontal slider inline */}
-            {!isMobile && (
-              <input type="range" min={0} max={1} step={0.02} value={muted ? 0 : volume}
-                onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setMuted(v === 0); }}
-                className="ml-2 w-20 accent-primary cursor-pointer" />
-            )}
-            {/* Mobile: vertical popup slider */}
-            {isMobile && showVolume && (
-              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 bg-black/90 border border-white/20 rounded-2xl px-3 py-4 z-30">
-                <span className="text-white/60 text-[10px]">{muted ? '0' : Math.round(volume * 100)}%</span>
-                <input
-                  type="range" min={0} max={1} step={0.02}
-                  value={muted ? 0 : volume}
-                  onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setMuted(v === 0); }}
-                  className="accent-primary cursor-pointer"
-                  style={{ writingMode: 'vertical-lr', direction: 'rtl', height: '100px', width: '28px' }}
-                />
-                <button onClick={() => setMuted(m => !m)} className="text-white/60 text-[10px] hover:text-white">
-                  {muted ? 'Unmute' : 'Mute'}
-                </button>
-              </div>
-            )}
+            <input type="range" min={0} max={1} step={0.02} value={muted ? 0 : volume}
+              onChange={(e) => { const v = parseFloat(e.target.value); setVolume(v); setMuted(v === 0); }}
+              className="ml-1 w-20 accent-primary cursor-pointer" />
           </div>
 
           {/* Time */}
