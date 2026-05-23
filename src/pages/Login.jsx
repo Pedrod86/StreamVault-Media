@@ -50,19 +50,27 @@ export default function Login() {
     ref.current?.click();
   };
 
-  if (isTV) {
+  // TV layout: used when TV is detected OR on wide screens (covers Android TV WebViews that don't match UA)
+  const tvLayout = isTV || window.innerWidth >= 960;
+
+  if (tvLayout) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-full max-w-xl px-12 py-10 bg-card rounded-2xl border border-border shadow-2xl">
-          <div className="text-center mb-10">
-            <div className="flex justify-center mb-4">
+      <div
+        className="bg-background flex items-center justify-center"
+        style={{ width: '100vw', height: '100vh', minHeight: '100vh', overflow: 'hidden' }}
+      >
+        <div className="w-full max-w-lg px-10 py-10 bg-card rounded-2xl border border-border shadow-2xl mx-4">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-3">
               <StreamVaultLogo size="lg" />
             </div>
             <h1 className="font-heading font-bold text-3xl text-foreground mt-2">Sign In</h1>
-            <p className="text-muted-foreground text-base mt-1">Use your remote to navigate</p>
+            <p className="text-muted-foreground text-base mt-1">
+              {isTV ? 'Use your remote to navigate' : 'Sign in to your account'}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 text-sm text-destructive text-center">
                 {error}
@@ -79,6 +87,7 @@ export default function Login() {
                 className="bg-secondary border-border h-14 text-lg px-4 focus:ring-2 focus:ring-primary tv-focusable"
                 tabIndex={1}
                 autoComplete="email"
+                autoFocus
                 required
               />
             </div>
@@ -99,12 +108,20 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 rounded-xl font-bold text-lg tv-focusable"
+              className="w-full h-14 bg-primary hover:bg-primary/90 rounded-xl font-bold text-lg tv-focusable mt-2"
               tabIndex={3}
               disabled={loading}
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
             </Button>
+
+            {!isTV && (
+              <div className="text-right -mt-2">
+                <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+            )}
           </form>
         </div>
       </div>
