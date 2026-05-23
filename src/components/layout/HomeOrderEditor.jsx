@@ -12,6 +12,7 @@ export const DEFAULT_SECTIONS = [
   { id: 'anime',             label: 'Anime' },
   { id: 'kids',              label: 'Kids' },
   { id: 'genres',            label: 'Genres' },
+  { id: 'recommendations',   label: 'Browse by Theme' },
 ];
 
 const STORAGE_KEY = 'streamvault_home_order';

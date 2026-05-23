@@ -10,6 +10,7 @@ import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
 import EmbyMediaRows from '../components/media/EmbyMediaRows';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import HomeOrderEditor, { loadHomeOrder, saveHomeOrder } from '../components/layout/HomeOrderEditor';
+import GenreRecommendations from '../components/media/GenreRecommendations';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LayoutGrid } from 'lucide-react';
 
@@ -172,6 +173,9 @@ export default function Home() {
                   <MediaRow key={genre} title={genre} items={items} watchHistory={watchHistory} />
                 ))}
               </React.Fragment>
+            );
+            case 'recommendations': return (
+              <GenreRecommendations key={section.id} allMedia={allMedia} watchHistory={watchHistory} />
             );
             default: return null;
           }
