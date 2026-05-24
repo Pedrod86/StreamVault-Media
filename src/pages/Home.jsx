@@ -154,32 +154,38 @@ export default function Home() {
       <div className="mt-6 space-y-2">
         <ServerStatusBar />
 
-        {activeTab === 'All' && homeOrder.filter(s => !s.hidden).map(section => {
-          switch (section.id) {
-            case 'live_tv':       return null;
-            case 'continue_emby': return <EmbyContinueWatching key={section.id} />;
-            case 'recently_added': return <EmbyRecentlyAdded key={section.id} />;
-            case 'emby_rows':     return <EmbyMediaRows key={section.id} />;
-            case 'continue_watching':
-              return continueWatching.length > 0 ? (
-                <MediaRow key={section.id} title="Continue Watching" items={continueWatching.map(c => c.media)} watchHistory={watchHistory} showProgress={true} />
-              ) : null;
-            case 'local_recent':  return <MediaRow key={section.id} title="Recently Added" items={recentlyAdded} watchHistory={watchHistory} showProgress={true} />;
-            case 'anime':         return animeItems.length > 0 ? <MediaRow key={section.id} title="Anime" items={animeItems} watchHistory={watchHistory} /> : null;
-            case 'kids':          return kidsItems.length > 0 ? <MediaRow key={section.id} title="Kids" items={kidsItems} watchHistory={watchHistory} /> : null;
-            case 'genres':        return (
-              <React.Fragment key={section.id}>
-                {Object.entries(genreMap).slice(0, 4).map(([genre, items]) => (
-                  <MediaRow key={genre} title={genre} items={items} watchHistory={watchHistory} />
-                ))}
-              </React.Fragment>
-            );
-            case 'recommendations': return (
-              <GenreRecommendations key={section.id} allMedia={allMedia} watchHistory={watchHistory} />
-            );
-            default: return null;
-          }
-        })}
+        {activeTab === 'All' && (
+          <>
+            <EmbyRecentlyAdded />
+            <EmbyContinueWatching />
+            {homeOrder.filter(s => !s.hidden).map(section => {
+              switch (section.id) {
+                case 'live_tv':       return null;
+                case 'continue_emby': return null;
+                case 'recently_added': return null;
+                case 'emby_rows':     return <EmbyMediaRows key={section.id} />;
+                case 'continue_watching':
+                  return continueWatching.length > 0 ? (
+                    <MediaRow key={section.id} title="Continue Watching" items={continueWatching.map(c => c.media)} watchHistory={watchHistory} showProgress={true} />
+                  ) : null;
+                case 'local_recent':  return <MediaRow key={section.id} title="Recently Added" items={recentlyAdded} watchHistory={watchHistory} showProgress={true} />;
+                case 'anime':         return animeItems.length > 0 ? <MediaRow key={section.id} title="Anime" items={animeItems} watchHistory={watchHistory} /> : null;
+                case 'kids':          return kidsItems.length > 0 ? <MediaRow key={section.id} title="Kids" items={kidsItems} watchHistory={watchHistory} /> : null;
+                case 'genres':        return (
+                  <React.Fragment key={section.id}>
+                    {Object.entries(genreMap).slice(0, 4).map(([genre, items]) => (
+                      <MediaRow key={genre} title={genre} items={items} watchHistory={watchHistory} />
+                    ))}
+                  </React.Fragment>
+                );
+                case 'recommendations': return (
+                  <GenreRecommendations key={section.id} allMedia={allMedia} watchHistory={watchHistory} />
+                );
+                default: return null;
+              }
+            })}
+          </>
+        )}
 
         {activeTab === 'Watchlist' && (
           visibleMedia.length === 0 ? (
