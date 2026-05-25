@@ -9,8 +9,9 @@ import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import { scanState, runScan } from '@/lib/embyScanState';
 
 const IS_4K = (item) =>
-  item.tags?.some(t => /^4k$/i.test(t) || /4k|2160p|uhd/i.test(t)) ||
-  !!item.title?.match(/\b(4K|UHD|2160p)\b/i);
+  item.tags?.some(t => typeof t === 'string' && (/^4k$/i.test(t) || /4k|2160p|uhd/i.test(t))) ||
+  !!item.title?.match(/\b(4K|UHD|2160p)\b/i) ||
+  !!item.description?.match(/\b(4K|UHD|2160p)\b/i);
 
 function FourKCard({ item, onPlay }) {
   return (
@@ -97,20 +98,52 @@ export default function FourK() {
         poster_url: i.posterUrl,
         tags: i.is4k ? ['emby', '4k'] : ['emby'],
       }));
-    return [...dbLibrary, ...scanItems];
+    const merged = [...dbLibrary, ...scanItems];
+
+    // Deduplicate by normalized title — keep the entry with the most tags (most complete)
+    const seen = new Map();
+    for (const item of merged) {
+      const key = (item.title || '').toLowerCase().trim();
+      if (!seen.has(key)) {
+        seen.set(key, item);
+      } else {
+        const existing = seen.get(key);
+        // Prefer item with more tags or a poster
+        const existingScore = (existing.tags?.length || 0) + (existing.poster_url ? 1 : 0) + (existing.rating ? 1 : 0);
+        const newScore = (item.tags?.length || 0) + (item.poster_url ? 1 : 0) + (item.rating ? 1 : 0);
+        if (newScore > existingScore) seen.set(key, item);
+      }
+    }
+    return Array.from(seen.values());
   }, [dbLibrary, scanProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Build embyId lookup for TV shows
-  const embyIdByTitle = useMemo(() => {
-    const map = new Map();
+  // Build embyId lookup + is4k lookup for TV shows from scan state
+  const { embyIdByTitle, scanIs4kByTitle } = useMemo(() => {
+    const idMap = new Map();
+    const is4kMap = new Map();
     scanState.library.forEach(i => {
-      if (i.title) map.set(i.title.toLowerCase().trim(), i.id);
+      if (i.title) {
+        const key = i.title.toLowerCase().trim();
+        idMap.set(key, i.id);
+        if (i.is4k) is4kMap.set(key, true);
+      }
     });
-    return map;
+    return { embyIdByTitle: idMap, scanIs4kByTitle: is4kMap };
   }, [scanProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fourKMovies = useMemo(() => allItems.filter(i => IS_4K(i) && i.media_type === 'movie'), [allItems]);
-  const fourKTV = useMemo(() => allItems.filter(i => IS_4K(i) && i.media_type === 'tv_show'), [allItems]);
+  // Augment DB items with scan-state 4k flag (covers TV shows not yet tagged in DB)
+  const allItemsAugmented = useMemo(() => {
+    return allItems.map(item => {
+      const key = (item.title || '').toLowerCase().trim();
+      if (!IS_4K(item) && scanIs4kByTitle.get(key)) {
+        return { ...item, tags: [...(item.tags || []), '4k'] };
+      }
+      return item;
+    });
+  }, [allItems, scanIs4kByTitle]);
+
+  const fourKMovies = useMemo(() => allItemsAugmented.filter(i => IS_4K(i) && i.media_type === 'movie'), [allItemsAugmented]);
+  const fourKTV = useMemo(() => allItemsAugmented.filter(i => IS_4K(i) && i.media_type === 'tv_show'), [allItemsAugmented]);
 
   const activeList = tab === 'movies' ? fourKMovies : fourKTV;
 
