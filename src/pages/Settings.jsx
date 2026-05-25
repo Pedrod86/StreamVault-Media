@@ -222,20 +222,24 @@ function QuickSyncSection() {
           setStats(s => ({ ...s, fetched: totalFetched }));
 
           // Sync this page immediately — don't accumulate the whole library
-          const dbItems = items.map(item => ({
-            emby_id: item.id,
-            title: item.title,
-            media_type: item.type === 'Series' ? 'tv_show' : 'movie',
-            description: item.overview || '',
-            year: item.year || undefined,
-            rating: item.rating || undefined,
-            duration_minutes: item.duration || undefined,
-            poster_url: item.posterUrl || undefined,
-            backdrop_url: item.backdropUrl || undefined,
-            video_url: item.streamUrl || undefined,
-            genre: item.genres || [],
-            tags: ['emby', `emby:${item.id}`],
-          }));
+          const dbItems = items.map(item => {
+            const tags = ['emby', `emby:${item.id}`];
+            if (item.is4k) tags.push('4k');
+            return {
+              emby_id: item.id,
+              title: item.title,
+              media_type: item.type === 'Series' ? 'tv_show' : 'movie',
+              description: item.overview || '',
+              year: item.year || undefined,
+              rating: item.rating || undefined,
+              duration_minutes: item.duration || undefined,
+              poster_url: item.posterUrl || undefined,
+              backdrop_url: item.backdropUrl || undefined,
+              video_url: item.streamUrl || undefined,
+              genre: item.genres || [],
+              tags,
+            };
+          });
 
           const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
           totalCreated += res2.data?.created || 0;
@@ -387,20 +391,24 @@ function CategorySyncSection() {
           totalFiltered += filtered.length;
 
           if (filtered.length > 0) {
-            const dbItems = filtered.map(item => ({
-              emby_id: item.id,
-              title: item.title,
-              media_type: item.type === 'Series' ? 'tv_show' : 'movie',
-              description: item.overview || '',
-              year: item.year || undefined,
-              rating: item.rating || undefined,
-              duration_minutes: item.duration || undefined,
-              poster_url: item.posterUrl || undefined,
-              backdrop_url: item.backdropUrl || undefined,
-              video_url: item.streamUrl || undefined,
-              genre: item.genres || [],
-              tags: ['emby', `emby:${item.id}`],
-            }));
+            const dbItems = filtered.map(item => {
+              const tags = ['emby', `emby:${item.id}`];
+              if (item.is4k) tags.push('4k');
+              return {
+                emby_id: item.id,
+                title: item.title,
+                media_type: item.type === 'Series' ? 'tv_show' : 'movie',
+                description: item.overview || '',
+                year: item.year || undefined,
+                rating: item.rating || undefined,
+                duration_minutes: item.duration || undefined,
+                poster_url: item.posterUrl || undefined,
+                backdrop_url: item.backdropUrl || undefined,
+                video_url: item.streamUrl || undefined,
+                genre: item.genres || [],
+                tags,
+              };
+            });
 
             const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
             totalCreated += res2.data?.created || 0;
@@ -656,20 +664,24 @@ export default function Settings() {
           if (res.data?.error) throw new Error(res.data.error);
           const { items, hasMore } = res.data;
           if (!items?.length) break;
-          const dbItems = items.map(item => ({
-            emby_id: item.id,
-            title: item.title,
-            media_type: item.type === 'Series' ? 'tv_show' : 'movie',
-            description: item.overview || '',
-            year: item.year || undefined,
-            rating: item.rating || undefined,
-            duration_minutes: item.duration || undefined,
-            poster_url: item.posterUrl || undefined,
-            backdrop_url: item.backdropUrl || undefined,
-            video_url: item.streamUrl || undefined,
-            genre: item.genres || [],
-            tags: ['emby', `emby:${item.id}`],
-          }));
+          const dbItems = items.map(item => {
+            const tags = ['emby', `emby:${item.id}`];
+            if (item.is4k) tags.push('4k');
+            return {
+              emby_id: item.id,
+              title: item.title,
+              media_type: item.type === 'Series' ? 'tv_show' : 'movie',
+              description: item.overview || '',
+              year: item.year || undefined,
+              rating: item.rating || undefined,
+              duration_minutes: item.duration || undefined,
+              poster_url: item.posterUrl || undefined,
+              backdrop_url: item.backdropUrl || undefined,
+              video_url: item.streamUrl || undefined,
+              genre: item.genres || [],
+              tags,
+            };
+          });
           await base44.functions.invoke('embySync', { server, items: dbItems });
           if (!hasMore) break;
           startIndex += items.length;

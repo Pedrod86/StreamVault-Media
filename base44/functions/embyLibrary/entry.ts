@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
     let url =
       `${base}/Users/${userId}/Items?IncludeItemTypes=${types}&Recursive=true` +
-      `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
+      `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaStreams,Height,Width` +
       `&SortBy=${sortField}&SortOrder=${sortOrder}&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`;
 
     if (searchTerm) url += `&SearchTerm=${encodeURIComponent(searchTerm)}`;
@@ -83,20 +83,33 @@ Deno.serve(async (req) => {
     const rawItems = json?.Items || [];
     const total = json?.TotalRecordCount || 0;
 
-    const items = rawItems.map(item => ({
-      id: item.Id,
-      title: item.Name,
-      type: item.Type,
-      year: item.ProductionYear || null,
-      rating: item.CommunityRating ? parseFloat(Number(item.CommunityRating).toFixed(1)) : null,
-      duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
-      overview: item.Overview || '',
-      genres: item.Genres || [],
-      contentRating: item.OfficialRating || null,
-      posterUrl: item.ImageTags?.Primary ? buildImageUrl(base, item.Id, token, 'Primary') : null,
-      backdropUrl: item.BackdropImageTags?.[0] ? buildImageUrl(base, item.Id, token, 'Backdrop') : null,
-      streamUrl: buildStreamUrl(base, item.Id, token),
-    }));
+    const items = rawItems.map(item => {
+      // Detect 4K: check Height field, MediaStreams, or title keywords
+      const height = item.Height || 0;
+      const videoStream = (item.MediaStreams || []).find(s => s.Type === 'Video');
+      const streamHeight = videoStream?.Height || 0;
+      const maxHeight = Math.max(height, streamHeight);
+      const is4k = maxHeight >= 2160 ||
+        /\b(4K|UHD|2160p)\b/i.test(item.Name || '') ||
+        (item.MediaStreams || []).some(s => s.Type === 'Video' && (s.Width >= 3840 || s.Height >= 2160));
+
+      return {
+        id: item.Id,
+        title: item.Name,
+        type: item.Type,
+        year: item.ProductionYear || null,
+        rating: item.CommunityRating ? parseFloat(Number(item.CommunityRating).toFixed(1)) : null,
+        duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
+        overview: item.Overview || '',
+        genres: item.Genres || [],
+        contentRating: item.OfficialRating || null,
+        posterUrl: item.ImageTags?.Primary ? buildImageUrl(base, item.Id, token, 'Primary') : null,
+        backdropUrl: item.BackdropImageTags?.[0] ? buildImageUrl(base, item.Id, token, 'Backdrop') : null,
+        streamUrl: buildStreamUrl(base, item.Id, token),
+        is4k,
+        height: maxHeight || null,
+      };
+    });
 
     return Response.json({
       items,

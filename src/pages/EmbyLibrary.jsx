@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Database, Search, Play, Star, X, RefreshCw, Loader2 } from 'lucide-react';
+import { Database, Search, Play, Star, X, RefreshCw, Loader2, Clapperboard, MonitorPlay } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,10 @@ import EmbyVideoPlayer from '@/components/media/EmbyVideoPlayer';
 import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import { Skeleton } from '@/components/ui/skeleton';
 import { scanState, resetScan, runScan } from '@/lib/embyScanState';
+
+const IS_4K = (item) =>
+  item.tags?.some(t => /^4k$/i.test(t) || /4k|2160p|uhd/i.test(t)) ||
+  !!item.title?.match(/\b(4K|UHD|2160p)\b/i);
 
 function MediaCard({ item, onPlay }) {
   return (
@@ -32,11 +36,14 @@ function MediaCard({ item, onPlay }) {
             <span className="text-white text-[10px] font-medium">{item.rating.toFixed(1)}</span>
           </div>
         )}
-        {item.media_type === 'tv_show' && (
-          <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+          {item.media_type === 'tv_show' && (
             <Badge className="text-[9px] px-1 py-0 bg-accent text-accent-foreground">TV</Badge>
-          </div>
-        )}
+          )}
+          {IS_4K(item) && (
+            <Badge className="text-[9px] px-1 py-0 bg-yellow-500/90 text-black font-bold">4K</Badge>
+          )}
+        </div>
       </div>
       <p className="text-xs text-foreground font-medium truncate leading-tight">{item.title}</p>
       {item.year && <p className="text-[10px] text-muted-foreground mt-0.5">{item.year}</p>}
@@ -44,11 +51,17 @@ function MediaCard({ item, onPlay }) {
   );
 }
 
-function MediaRow({ title, items, onPlay }) {
+function MediaRow({ title, items, onPlay, badge }) {
   if (!items.length) return null;
   return (
     <div className="mb-6">
-      <h2 className="font-heading font-bold text-base text-foreground px-4 sm:px-6 mb-3">{title}</h2>
+      <div className="flex items-center gap-2 px-4 sm:px-6 mb-3">
+        <h2 className="font-heading font-bold text-base text-foreground">{title}</h2>
+        {badge && (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">{badge}</span>
+        )}
+        <span className="text-xs text-muted-foreground ml-1">({items.length})</span>
+      </div>
       <div className="flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2" style={{ scrollbarWidth: 'none' }}>
         {items.map(item => <MediaCard key={item.id} item={item} onPlay={onPlay} />)}
       </div>
@@ -110,12 +123,20 @@ export default function EmbyLibrary() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const filters = ['All', 'Movies', 'TV Shows'];
+  const filters = [
+    { id: 'All', label: 'All' },
+    { id: 'Movies', label: 'Movies' },
+    { id: 'TV Shows', label: 'TV Shows' },
+    { id: '4K Movies', label: '4K Movies', icon: Clapperboard },
+    { id: '4K TV', label: '4K TV', icon: MonitorPlay },
+  ];
 
   const filtered = useMemo(() => {
     let items = library;
-    if (activeFilter === 'Movies') items = items.filter(i => i.media_type === 'movie');
-    if (activeFilter === 'TV Shows') items = items.filter(i => i.media_type === 'tv_show');
+    if (activeFilter === 'Movies') items = items.filter(i => i.media_type === 'movie' && !IS_4K(i));
+    if (activeFilter === 'TV Shows') items = items.filter(i => i.media_type === 'tv_show' && !IS_4K(i));
+    if (activeFilter === '4K Movies') items = items.filter(i => i.media_type === 'movie' && IS_4K(i));
+    if (activeFilter === '4K TV') items = items.filter(i => i.media_type === 'tv_show' && IS_4K(i));
     if (search.trim()) {
       const q = search.toLowerCase();
       items = items.filter(i => i.title.toLowerCase().includes(q));
@@ -125,19 +146,32 @@ export default function EmbyLibrary() {
 
   const sections = useMemo(() => {
     if (search.trim()) return null;
-    const movies = filtered.filter(i => i.media_type === 'movie');
-    const shows = filtered.filter(i => i.media_type === 'tv_show');
+    const is4kFilter = activeFilter === '4K Movies' || activeFilter === '4K TV';
+
+    if (activeFilter === '4K Movies') {
+      return [{ title: '4K Movies', items: filtered }];
+    }
+    if (activeFilter === '4K TV') {
+      return [{ title: '4K TV Shows', items: filtered }];
+    }
+
+    const movies = filtered.filter(i => i.media_type === 'movie' && !IS_4K(i));
+    const shows = filtered.filter(i => i.media_type === 'tv_show' && !IS_4K(i));
+    const movies4k = filtered.filter(i => i.media_type === 'movie' && IS_4K(i));
+    const shows4k = filtered.filter(i => i.media_type === 'tv_show' && IS_4K(i));
     const genreMap = {};
-    filtered.forEach(item => {
+    filtered.filter(i => !IS_4K(i)).forEach(item => {
       item.genre?.forEach(g => {
         if (!genreMap[g]) genreMap[g] = [];
         genreMap[g].push(item);
       });
     });
-    const topGenres = Object.entries(genreMap).sort((a, b) => b[1].length - a[1].length).slice(0, 8);
+    const topGenres = Object.entries(genreMap).sort((a, b) => b[1].length - a[1].length).slice(0, 6);
     const rows = [];
     if (activeFilter !== 'TV Shows' && movies.length) rows.push({ title: 'Movies', items: movies });
     if (activeFilter !== 'Movies' && shows.length) rows.push({ title: 'TV Shows', items: shows });
+    if (activeFilter !== 'TV Shows' && movies4k.length) rows.push({ title: '4K Movies', items: movies4k, badge: '4K' });
+    if (activeFilter !== 'Movies' && shows4k.length) rows.push({ title: '4K TV Shows', items: shows4k, badge: '4K' });
     topGenres.forEach(([g, items]) => rows.push({ title: g, items }));
     return rows;
   }, [filtered, activeFilter, search]);
@@ -221,18 +255,25 @@ export default function EmbyLibrary() {
           )}
         </div>
 
-        <div className="flex gap-2">
-          {filters.map(f => (
-            <button
-              key={f}
-              onClick={() => setActiveFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                activeFilter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {filters.map(f => {
+            const Icon = f.icon;
+            const is4k = f.id === '4K Movies' || f.id === '4K TV';
+            return (
+              <button
+                key={f.id}
+                onClick={() => setActiveFilter(f.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  activeFilter === f.id
+                    ? is4k ? 'bg-yellow-500 text-black' : 'bg-primary text-primary-foreground'
+                    : is4k ? 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {Icon && <Icon className="w-3 h-3" />}
+                {f.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -262,8 +303,8 @@ export default function EmbyLibrary() {
         </div>
       ) : (
         <div>
-          {sections?.map(({ title, items }) => (
-            <MediaRow key={title} title={title} items={items} onPlay={handlePlay} />
+          {sections?.map(({ title, items, badge }) => (
+            <MediaRow key={title} title={title} items={items} onPlay={handlePlay} badge={badge} />
           ))}
         </div>
       )}
