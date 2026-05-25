@@ -1,30 +1,36 @@
 import React from 'react';
-import { Monitor, Tv2, ExternalLink, Check, Zap } from 'lucide-react';
+import { Monitor, Tv2, ExternalLink, Check, Zap, Play } from 'lucide-react';
 
 export const PLAYERS = [
+  {
+    id: 'videojs',
+    label: 'Video.js',
+    description: 'Most popular open-source player — great HLS/ABR support',
+    icon: Play,
+  },
+  {
+    id: 'plyr',
+    label: 'Plyr',
+    description: 'Clean modern UI with HLS.js — simple and reliable',
+    icon: Play,
+  },
+  {
+    id: 'shaka',
+    label: 'Shaka Player',
+    description: "Google's player — excellent HLS + DASH adaptive streaming",
+    icon: Monitor,
+  },
+  {
+    id: 'mediaelement',
+    label: 'MediaElement.js',
+    description: 'Solid cross-browser HLS player, great compatibility',
+    icon: Tv2,
+  },
   {
     id: 'mpv',
     label: 'MPV',
     description: 'Open in MPV — full HDR10+, Dolby Vision, all codecs (must be installed)',
     icon: ExternalLink,
-  },
-  {
-    id: 'hls',
-    label: 'HLS',
-    description: 'hls.js — adaptive bitrate, HDR10 passthrough where browser supports it',
-    icon: Tv2,
-  },
-  {
-    id: 'direct',
-    label: 'Direct Play',
-    description: 'Native browser decode — HDR10 on Safari/Edge with compatible display',
-    icon: Zap,
-  },
-  {
-    id: 'dash',
-    label: 'DASH',
-    description: 'dash.js — MPEG-DASH adaptive streaming, good HDR10 support in-browser',
-    icon: Monitor,
   },
   {
     id: 'vlc',
@@ -74,11 +80,6 @@ export default function PlayerPicker({ current, onChange, onClose }) {
             </button>
           );
         })}
-      </div>
-      <div className="px-4 py-2.5 border-t border-white/10">
-        <p className="text-[10px] text-white/30 leading-relaxed">
-          Direct Play recommended for most content. DASH for adaptive HDR10 in-browser. For HDR10+ use MPV or VLC.
-        </p>
       </div>
     </div>
   );
