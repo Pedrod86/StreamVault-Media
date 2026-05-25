@@ -50,6 +50,18 @@ export const PLAYERS = [
     description: 'Open in MX Player on Android',
     icon: ExternalLink,
   },
+  {
+    id: 'onlineplayer',
+    label: 'OnlinePlayer',
+    description: 'Embeddable online player — plays MKV, MP4, HLS and more',
+    icon: Play,
+  },
+  {
+    id: 'moviplayer',
+    label: 'MoviPlayer',
+    description: 'Open in MoviPlayer — plays HEVC, AV1, HDR in browser (new tab)',
+    icon: ExternalLink,
+  },
 ];
 
 export default function PlayerPicker({ current, onChange, onClose }) {
