@@ -21,26 +21,31 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, fetched: 0, created: 0, updated: 0 });
     }
 
-    // Build the list of specific emby: tags we need to check for THIS batch only
-    const embyIds = items.map(i => i.emby_id).filter(Boolean);
+    // Fetch existing media to build dedup sets (title+type and emby: tag)
+    // Use service role to bypass RLS and get a reliable full picture
+    const existingMedia = await base44.asServiceRole.entities.Media.list('-created_date', 10000).catch(() => []);
 
-    // Check in chunks of 10 sequentially — avoids rate limit spikes
+    // Build lookup sets
     const existingEmbyIds = new Set();
-    for (let i = 0; i < embyIds.length; i += 10) {
-      const chunk = embyIds.slice(i, i + 10);
-      const checks = await Promise.all(
-        chunk.map(eid =>
-          base44.entities.Media.filter({ tags: `emby:${eid}` }, '-created_date', 1)
-            .then(r => r.length > 0 ? eid : null)
-            .catch(() => null)
-        )
-      );
-      checks.forEach(eid => { if (eid) existingEmbyIds.add(eid); });
-      if (i + 10 < embyIds.length) await sleep(300);
+    const existingTitleType = new Set();
+    for (const m of existingMedia) {
+      const embyTag = Array.isArray(m.tags) ? m.tags.find(t => typeof t === 'string' && t.startsWith('emby:')) : null;
+      if (embyTag) existingEmbyIds.add(embyTag.replace('emby:', ''));
+      const key = `${(m.title || '').toLowerCase().trim()}|${m.media_type}`;
+      existingTitleType.add(key);
     }
 
-    // Filter to only genuinely new items
-    const newItems = items.filter(item => item.emby_id && !existingEmbyIds.has(item.emby_id));
+    // Filter to only genuinely new items (not duplicate by emby_id OR title+type)
+    const newItems = items.filter(item => {
+      if (!item.emby_id) return false;
+      if (existingEmbyIds.has(item.emby_id)) return false;
+      const key = `${(item.title || '').toLowerCase().trim()}|${item.media_type}`;
+      if (existingTitleType.has(key)) return false;
+      // Track so within this batch we don't double-insert either
+      existingEmbyIds.add(item.emby_id);
+      existingTitleType.add(key);
+      return true;
+    });
 
     // Bulk create sequentially to avoid rate limits
     let createdCount = 0;
