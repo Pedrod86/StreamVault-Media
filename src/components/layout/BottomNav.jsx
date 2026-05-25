@@ -67,7 +67,9 @@ export default function BottomNav() {
     }
   }, [location.pathname, navigate]);
 
-  // Show login button if not authenticated
+  // Show login button if not authenticated (null = still loading, show nothing; false = not authed)
+  if (isAuthed === null) return null;
+
   if (isAuthed === false) {
     return (
       <nav

@@ -50,8 +50,8 @@ export default function Login() {
     ref.current?.click();
   };
 
-  // TV layout: used when TV is detected OR on wide screens (covers Android TV WebViews that don't match UA)
-  const tvLayout = isTV || window.innerWidth >= 960;
+  // TV layout: only for actual TV devices, not regular Android phones/tablets
+  const tvLayout = isTV;
 
   if (tvLayout) {
     return (
