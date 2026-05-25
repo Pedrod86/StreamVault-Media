@@ -62,7 +62,8 @@ export default function EmbyMediaRows() {
 
   const handlePlay = (item) => {
     // Extract real Emby ID from streamUrl (works for both movies and series)
-    const match = item.streamUrl?.match(/\/Videos\/([^/]+)\/stream/);
+    const streamUrl = item.streamUrl || item.video_url || '';
+    const match = streamUrl.match(/\/Videos\/([^/]+)\/stream/);
     const embyId = match ? match[1] : item.id;
 
     if (item.type === 'Series') {

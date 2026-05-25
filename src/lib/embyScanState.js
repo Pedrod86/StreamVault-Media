@@ -178,7 +178,7 @@ async function fetchPage() {
       clearProgress();
     } else {
       // Delay between pages — give the DB rate limiter room to breathe
-      setTimeout(() => fetchPage(), 8000);
+      setTimeout(() => fetchPage(), 15000);
     }
   } catch (err) {
     // Persist the current index so resume starts from the last completed page
@@ -186,9 +186,10 @@ async function fetchPage() {
     scanState.error = err.message || 'Failed to load library';
     scanState.loading = false;
     notifyListeners();
-    // Rate limit: back off 5 minutes. Other errors: retry after 30s.
-    const isRateLimit = err.message?.includes('429') || err.message?.toLowerCase().includes('rate limit');
-    const retryDelay = isRateLimit ? 5 * 60 * 1000 : 30_000;
+    // Rate limit: back off 10 minutes. Other errors: retry after 60s.
+    const msg = String(err.message || err || '');
+    const isRateLimit = msg.includes('429') || msg.toLowerCase().includes('rate limit');
+    const retryDelay = isRateLimit ? 10 * 60 * 1000 : 60_000;
     setTimeout(() => {
       if (!scanState.done && !scanState.loading) {
         scanState.error = null;
