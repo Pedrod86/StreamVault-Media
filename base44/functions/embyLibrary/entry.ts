@@ -1,5 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// Module-level server cache — avoids hitting DB on every request
+let _serverCache = null;
+let _serverCacheAt = 0;
+const SERVER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getEmbyServer(base44) {
+  const now = Date.now();
+  if (_serverCache && (now - _serverCacheAt) < SERVER_CACHE_TTL) return _serverCache;
+  const servers = await base44.entities.MediaServer.list();
+  const server = servers.find(s => s.server_type === 'emby' && s.is_active !== false) || null;
+  _serverCache = server;
+  _serverCacheAt = now;
+  return server;
+}
+
 async function doFetch(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
@@ -54,8 +69,7 @@ Deno.serve(async (req) => {
     // genre filter
     const genreFilter = (body.genre || '').trim();
 
-    const servers = await base44.entities.MediaServer.list();
-    const server = servers.find(s => s.server_type === 'emby' && s.is_active !== false);
+    const server = await getEmbyServer(base44);
     if (!server) return Response.json({ error: 'No active Emby server found' }, { status: 404 });
 
     const base = server.server_url.replace(/\/$/, '');
