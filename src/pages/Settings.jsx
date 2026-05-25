@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay, Download, ArrowUpCircle, PackageCheck } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay, Download, ArrowUpCircle, PackageCheck, Info, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 import ApiKeysSection from '@/components/settings/ApiKeysSection';
@@ -1061,6 +1061,20 @@ export default function Settings() {
             <div>
               <p className="text-sm font-medium text-foreground">Watch History</p>
               <p className="text-[11px] text-muted-foreground">Your viewing history</p>
+            </div>
+          </Link>
+          <Link to="/about" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">
+            <Info className="w-5 h-5 text-accent shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">About StreamVault</p>
+              <p className="text-[11px] text-muted-foreground">Features & privacy info</p>
+            </div>
+          </Link>
+          <Link to="/contact" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">
+            <Mail className="w-5 h-5 text-accent shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Contact Us</p>
+              <p className="text-[11px] text-muted-foreground">Get in touch with support</p>
             </div>
           </Link>
         </div>
