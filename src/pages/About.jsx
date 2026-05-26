@@ -1,6 +1,93 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Tv, Library, Radio, Zap, Users, ShieldCheck } from 'lucide-react';
+import { Tv, Library, Radio, Zap, Users, ShieldCheck, Download, Smartphone, RefreshCw, ExternalLink } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+
+function ApkDownloadSection() {
+  const [status, setStatus] = useState('idle'); // idle | loading | done | error
+  const [release, setRelease] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchRelease = async () => {
+    setStatus('loading');
+    setError(null);
+    const res = await base44.functions.invoke('githubLatestRelease', {});
+    if (res.data?.error) {
+      setError(res.data.error);
+      setStatus('error');
+    } else {
+      setRelease(res.data);
+      setStatus('done');
+    }
+  };
+
+  useEffect(() => { fetchRelease(); }, []);
+
+  return (
+    <div className="mt-10 p-5 rounded-xl bg-card border border-primary/30 space-y-4">
+      <div className="flex items-center gap-2">
+        <Smartphone className="w-5 h-5 text-primary" />
+        <h2 className="font-heading font-semibold text-lg text-foreground">Download Android APK</h2>
+        <button onClick={fetchRelease} className="ml-auto text-muted-foreground hover:text-foreground transition-colors">
+          <RefreshCw className={`w-4 h-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {status === 'loading' && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="w-4 h-4 border-2 border-muted border-t-primary rounded-full animate-spin" />
+          Checking GitHub for latest release…
+        </div>
+      )}
+
+      {status === 'error' && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      {status === 'done' && release && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary">{release.tag}</span>
+            {release.published_at && (
+              <span className="text-xs text-muted-foreground">
+                Released {new Date(release.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+
+          {release.body && (
+            <p className="text-xs text-muted-foreground bg-secondary rounded-lg px-3 py-2 line-clamp-3 whitespace-pre-line">{release.body}</p>
+          )}
+
+          {release.apk ? (
+            <a
+              href={release.apk.download_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-xl px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Download className="w-4 h-4" />
+              Download APK ({release.apk.size_mb} MB)
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">No APK found in the latest release.</p>
+          )}
+
+          {release.html_url && (
+            <a
+              href={release.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+            >
+              <ExternalLink className="w-3 h-3" /> View release on GitHub
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function About() {
   return (
@@ -66,6 +153,9 @@ export default function About() {
           </p>
         </section>
       </div>
+
+      {/* ── Android APK Download ── */}
+      <ApkDownloadSection />
 
       <div className="mt-12 border-t border-border pt-8 flex flex-wrap gap-4">
         <Link
