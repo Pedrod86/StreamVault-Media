@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MediaRow from '../components/media/MediaRow';
 import TrailerPlayer from '../components/media/TrailerPlayer';
 import ExoPlayer from '@/components/media/ExoPlayer';
+import ShakaPlayer from '@/components/media/ShakaPlayer';
 import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
 import ImdbPanel from '../components/media/ImdbPanel';
 import TvdbPanel from '../components/media/TvdbPanel';
@@ -249,31 +250,42 @@ export default function MediaDetail() {
         </div>
 
         {/* Video player */}
-        {showPlayer && playerSource === 'emby' && embyItem && embyServer ? (
-          <ExoPlayer
-            src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true&MediaSourceId=${embyItem.id}`}
-            title={media.title}
-            startAt={startAt}
-            onClose={() => setShowPlayer(false)}
-            onProgress={(p) => saveProgress.mutate(p)}
-          />
-        ) : showPlayer && playerSource === 'iptv' && iptvVod && xtreamServer ? (
-          <ExoPlayer
-            src={getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')}
-            title={media.title}
-            onClose={() => setShowPlayer(false)}
-          />
-        ) : showPlayer && media.video_url ? (
-          <ExoPlayer
-            src={media.video_url}
-            title={media.title}
-            startAt={startAt}
-            onClose={() => setShowPlayer(false)}
-            onProgress={(p) => saveProgress.mutate(p)}
-          />
-        ) : showPlayer ? (
-          <TrailerPlayer media={media} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />
-        ) : null}
+        {(() => {
+          if (!showPlayer) return null;
+          const PlayerComponent = selectedPlayerId === 'shaka' ? ShakaPlayer : ExoPlayer;
+          if (playerSource === 'emby' && embyItem && embyServer) {
+            return (
+              <PlayerComponent
+                src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true&MediaSourceId=${embyItem.id}`}
+                title={media.title}
+                startAt={startAt}
+                onClose={() => setShowPlayer(false)}
+                onProgress={(p) => saveProgress.mutate(p)}
+              />
+            );
+          }
+          if (playerSource === 'iptv' && iptvVod && xtreamServer) {
+            return (
+              <PlayerComponent
+                src={getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')}
+                title={media.title}
+                onClose={() => setShowPlayer(false)}
+              />
+            );
+          }
+          if (media.video_url) {
+            return (
+              <PlayerComponent
+                src={media.video_url}
+                title={media.title}
+                startAt={startAt}
+                onClose={() => setShowPlayer(false)}
+                onProgress={(p) => saveProgress.mutate(p)}
+              />
+            );
+          }
+          return <TrailerPlayer media={media} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />;
+        })()}
 
         {/* Source picker */}
         <AnimatePresence>

@@ -14,6 +14,12 @@ export const PLAYERS = [
     description: 'Adaptive HLS streaming via HLS.js — great for live & adaptive streams',
     icon: Play,
   },
+  {
+    id: 'shaka',
+    label: 'Shaka Player',
+    description: 'Google\'s Shaka Player — excellent DASH & HLS support with DRM (Widevine/PlayReady)',
+    icon: Play,
+  },
 ];
 
 export default function PlayerPicker({ current, onChange, onClose }) {
