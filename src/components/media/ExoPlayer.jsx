@@ -79,6 +79,18 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
     return () => { v.removeEventListener('enterpictureinpicture', enter); v.removeEventListener('leavepictureinpicture', leave); };
   }, []);
 
+  const flash = (side) => {
+    setTapFlash(side);
+    setTimeout(() => setTapFlash(null), 600);
+  };
+
+  const skip = useCallback((secs) => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + secs));
+    resetHideTimer();
+  }, [resetHideTimer]);
+
   // MediaSession API — lock screen / notification controls on Android Chrome
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
@@ -93,18 +105,6 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       });
     };
   }, [title, skip]);
-
-  const flash = (side) => {
-    setTapFlash(side);
-    setTimeout(() => setTapFlash(null), 600);
-  };
-
-  const skip = useCallback((secs) => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + secs));
-    resetHideTimer();
-  }, [resetHideTimer]);
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
