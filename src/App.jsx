@@ -48,7 +48,10 @@ const AuthenticatedApp = () => {
     }
   }, [authError]);
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  // On auth/login pages, never block with a spinner — always let them render
+  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(window.location.pathname);
+
+  if (!isAuthRoute && (isLoadingPublicSettings || isLoadingAuth)) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin"></div>
@@ -56,7 +59,7 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
+  if (!isAuthRoute && authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
