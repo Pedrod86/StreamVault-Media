@@ -10,14 +10,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MediaRow from '../components/media/MediaRow';
 import TrailerPlayer from '../components/media/TrailerPlayer';
 import ExoPlayer from '@/components/media/ExoPlayer';
-import VideoPlayer from '@/components/media/VideoPlayer';
 import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
 import ImdbPanel from '../components/media/ImdbPanel';
 import TvdbPanel from '../components/media/TvdbPanel';
 import { fetchEmbyFullLibrary } from '../lib/embyApi';
 import { PLAYERS } from '../components/media/PlayerPicker';
 import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
-import IptvDetailPlayer from '../components/media/IptvDetailPlayer';
 
 export default function MediaDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -260,16 +258,15 @@ export default function MediaDetail() {
             onProgress={(p) => saveProgress.mutate(p)}
           />
         ) : showPlayer && playerSource === 'iptv' && iptvVod && xtreamServer ? (
-          <IptvDetailPlayer
-            url={getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')}
+          <ExoPlayer
+            src={getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')}
             title={media.title}
             onClose={() => setShowPlayer(false)}
           />
         ) : showPlayer && media.video_url ? (
-          <VideoPlayer
+          <ExoPlayer
             src={media.video_url}
             title={media.title}
-            poster={media.poster_url || media.backdrop_url}
             startAt={startAt}
             onClose={() => setShowPlayer(false)}
             onProgress={(p) => saveProgress.mutate(p)}

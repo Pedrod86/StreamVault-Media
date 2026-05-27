@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, Play, ChevronRight, Loader2, Tv } from 'lucide-react';
-import EmbyVideoPlayer from './EmbyVideoPlayer';
+import ExoPlayer from './ExoPlayer';
 
 export default function EmbySeriesBrowser({ item, server, onClose }) {
   const [seasons, setSeasons] = useState([]);
@@ -40,11 +40,13 @@ export default function EmbySeriesBrowser({ item, server, onClose }) {
   }, [embyId]);
 
   if (playingEpisode) {
+    const base = server?.server_url?.replace(/\/$/, '');
+    const token = server?.api_token;
+    const src = `${base}/Videos/${playingEpisode.id}/stream?api_key=${token}&Static=true&MediaSourceId=${playingEpisode.id}`;
     return (
-      <EmbyVideoPlayer
-        item={{ ...playingEpisode, id: playingEpisode.id, title: `${item.title} — ${playingEpisode.name}` }}
-        server={server}
-        initialPlayerId="hls"
+      <ExoPlayer
+        src={src}
+        title={`${item.title} — ${playingEpisode.name}`}
         onClose={() => setPlayingEpisode(null)}
       />
     );

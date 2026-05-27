@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Radio, Search, Play, Tv, Film, Star, X, Loader2, AlertCircle, ChevronDown, ChevronRight, Layers, ExternalLink as ExternalLinkIcon, CalendarDays } from 'lucide-react';
+import { Radio, Search, Play, Tv, Film, Star, X, Loader2, AlertCircle, CalendarDays } from 'lucide-react';
+import ExoPlayer from '@/components/media/ExoPlayer';
 import EpgGuide from '@/components/iptv/EpgGuide';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
-import Hls from 'hls.js';
 import {
   getLiveStreams, getLiveCategories,
   getVodStreams, getVodCategories,
@@ -392,175 +392,10 @@ export default function IPTV() {
         }} />
       )}
 
-      {/* Player — use a simple HTML5 video overlay for IPTV streams */}
+      {/* Player */}
       {playing && (
-        <IptvPlayer url={playing.url} title={playing.name} onClose={() => setPlaying(null)} />
+        <ExoPlayer src={playing.url} title={playing.name} onClose={() => setPlaying(null)} />
       )}
-    </div>
-  );
-}
-
-function IptvPlayer({ url, title, onClose }) {
-  const videoRef = React.useRef(null);
-  const hlsRef = React.useRef(null);
-  const [playerId, setPlayerId] = React.useState('native');
-  const [showPicker, setShowPicker] = React.useState(false);
-
-  const IPTV_PLAYERS = [
-    { id: 'native', label: 'Native', description: 'Direct browser playback (try this first)' },
-    { id: 'hls', label: 'HLS.js', description: 'Play via hls.js (uses proxy)' },
-    { id: 'mpv', label: 'MPV', description: 'Open in MPV media player (must be installed)' },
-    { id: 'vlc', label: 'VLC', description: 'Open in VLC media player (must be installed)' },
-  ];
-
-  const isExternal = playerId === 'mpv' || playerId === 'vlc';
-  const schemeMap = { mpv: `mpv://${url}`, vlc: `vlc://${url}` };
-
-  // Native — point video src directly at the stream URL
-  React.useEffect(() => {
-    if (isExternal || playerId !== 'native') return;
-    const video = videoRef.current;
-    if (!video) return;
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-    video.src = url;
-    video.load();
-    video.play().catch(() => {});
-  }, [url, playerId, isExternal]);
-
-  // HLS.js with proxy fallback
-  React.useEffect(() => {
-    if (isExternal || playerId !== 'hls') return;
-    const video = videoRef.current;
-    if (!video) return;
-    if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
-
-    if (!Hls.isSupported()) {
-      video.src = url;
-      video.play().catch(() => {});
-      return;
-    }
-
-    const hls = new Hls({ enableWorker: false, lowLatencyMode: true });
-    hlsRef.current = hls;
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
-    hls.on(Hls.Events.ERROR, (_e, data) => {
-      if (data.fatal) { hls.destroy(); hlsRef.current = null; video.src = url; video.play().catch(() => {}); }
-    });
-
-    return () => { if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; } };
-  }, [url, playerId, isExternal]);
-
-  const playerLabel = IPTV_PLAYERS.find(p => p.id === playerId)?.label || 'MPV';
-
-  // External player screen
-  if (isExternal) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center gap-6 p-8">
-        <button onClick={onClose} className="absolute top-4 left-4 text-white/70 hover:text-white">
-          <X className="w-6 h-6" />
-        </button>
-        {/* Player picker */}
-        <div className="absolute top-4 right-4">
-          <button
-            onClick={() => setShowPicker(p => !p)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 text-white hover:bg-white/20"
-          >
-            <Layers className="w-3.5 h-3.5" /> {playerLabel}
-          </button>
-          {showPicker && (
-            <div className="absolute top-10 right-0 w-64 bg-black/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <span className="text-white text-sm font-semibold">Choose Player</span>
-                <button onClick={() => setShowPicker(false)} className="text-white/50 hover:text-white text-xs">✕</button>
-              </div>
-              <div className="p-2 space-y-1">
-                {IPTV_PLAYERS.map(p => (
-                  <button key={p.id} onClick={() => { setPlayerId(p.id); setShowPicker(false); }}
-                    className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${playerId === p.id ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}>
-                    <div>
-                      <div className="text-xs font-semibold">{p.label}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5">{p.description}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <ExternalLinkIcon className="w-14 h-14 text-primary" />
-        <div className="text-center space-y-2 max-w-sm">
-          <h2 className="text-white text-xl font-bold">{title}</h2>
-          <p className="text-white/60 text-sm">Ready to open in <span className="text-primary font-semibold">{playerLabel}</span></p>
-          <p className="text-white/30 text-xs mt-2 break-all">{url}</p>
-        </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <a
-            href={schemeMap[playerId]}
-            target="_top"
-            rel="noopener noreferrer"
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2"
-          >
-            <ExternalLinkIcon className="w-4 h-4" /> Open in {playerLabel}
-          </a>
-          <button
-            onClick={() => navigator.clipboard.writeText(url)}
-            className="w-full py-3 rounded-xl bg-white/10 text-white font-medium text-sm"
-          >
-            Copy Stream URL
-          </button>
-        </div>
-        <p className="text-white/25 text-xs text-center max-w-xs">{playerLabel} must be installed on your device.</p>
-      </div>
-    );
-  }
-
-  // Browser player screen
-  return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
-        <button onClick={onClose} className="text-white/80 hover:text-white p-1">
-          <X className="w-6 h-6" />
-        </button>
-        <span className="text-white/80 text-sm font-medium truncate max-w-[200px]">{title}</span>
-        <div className="relative">
-          <button
-            onClick={() => setShowPicker(p => !p)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/10 text-white hover:bg-white/20"
-          >
-            <Layers className="w-3.5 h-3.5" /> {playerLabel}
-          </button>
-          {showPicker && (
-            <div className="absolute top-10 right-0 w-64 bg-black/95 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-20">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <span className="text-white text-sm font-semibold">Choose Player</span>
-                <button onClick={() => setShowPicker(false)} className="text-white/50 hover:text-white text-xs">✕</button>
-              </div>
-              <div className="p-2 space-y-1">
-                {IPTV_PLAYERS.map(p => (
-                  <button key={p.id} onClick={() => { setPlayerId(p.id); setShowPicker(false); }}
-                    className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${playerId === p.id ? 'bg-primary/20 text-primary' : 'text-white/80 hover:bg-white/10'}`}>
-                    <div>
-                      <div className="text-xs font-semibold">{p.label}</div>
-                      <div className="text-[10px] text-white/40 mt-0.5">{p.description}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      <video
-        ref={videoRef}
-        className="w-full h-full object-contain"
-        autoPlay
-        controls
-        playsInline
-        webkit-playsinline="true"
-        x5-playsinline="true"
-      />
     </div>
   );
 }
