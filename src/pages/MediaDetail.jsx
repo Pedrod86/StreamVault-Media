@@ -14,7 +14,7 @@ import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
 import ImdbPanel from '../components/media/ImdbPanel';
 import TvdbPanel from '../components/media/TvdbPanel';
 import { fetchEmbyFullLibrary } from '../lib/embyApi';
-import { PLAYERS } from '../components/media/PlayerPicker';
+import PlayerPicker, { PLAYERS } from '../components/media/PlayerPicker';
 import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
 
 export default function MediaDetail() {
@@ -28,7 +28,7 @@ export default function MediaDetail() {
   const [showCollections, setShowCollections] = useState(false);
   const [resumePrompt, setResumePrompt] = useState(false);
   const [startAt, setStartAt] = useState(0);
-  const [selectedPlayerId, setSelectedPlayerId] = useState('direct');
+  const [selectedPlayerId, setSelectedPlayerId] = useState('exoplayer');
   const [subtitlesEnabled, setSubtitlesEnabled] = useState(false);
   const [showPlayerPicker, setShowPlayerPicker] = useState(false);
   const [embySubtitles, setEmbySubtitles] = useState([]); // loaded from Emby PlaybackInfo
@@ -454,21 +454,11 @@ export default function MediaDetail() {
                     <ChevronDown className="w-3 h-3" />
                   </button>
                   {showPlayerPicker && (
-                    <div className="absolute top-10 left-0 w-64 bg-card border border-border rounded-xl overflow-hidden shadow-2xl z-30">
-                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                        <span className="text-foreground text-sm font-semibold">Player</span>
-                        <button onClick={() => setShowPlayerPicker(false)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
-                      </div>
-                      <div className="p-1.5 space-y-0.5">
-                        {PLAYERS.map(p => (
-                          <button key={p.id} onClick={() => { setSelectedPlayerId(p.id); setShowPlayerPicker(false); }}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${selectedPlayerId === p.id ? 'bg-primary/20 text-primary' : 'text-foreground hover:bg-secondary'}`}>
-                            <div className="font-semibold">{p.label}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{p.description}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <PlayerPicker
+                      current={selectedPlayerId}
+                      onChange={(id) => { setSelectedPlayerId(id); setShowPlayerPicker(false); }}
+                      onClose={() => setShowPlayerPicker(false)}
+                    />
                   )}
                 </div>
 
