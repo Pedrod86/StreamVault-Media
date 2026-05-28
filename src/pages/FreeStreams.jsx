@@ -47,17 +47,21 @@ export default function FreeStreams() {
     setResults(null);
     setSearchedTitle(title.trim());
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Find free, legal streaming sources for "${title.trim()}". 
-Search the web and return a list of places where this movie or TV show can be watched for free legally (e.g. Tubi, Pluto TV, Crackle, IMDb TV/Freevee, YouTube, Peacock free tier, Plex free, Kanopy, Hoopla, etc.).
-For each source include:
+      prompt: `Find free, legal streaming sources for the movie or TV show titled "${title.trim()}".
+Search the web and check ALL of the following free streaming platforms (and any others you find):
+
+Tubi TV (tubitv.com), Pluto TV (pluto.tv), Amazon Freevee / IMDb TV (freevee.amazon.com), YouTube (youtube.com/movies), Peacock free tier (peacocktv.com), Plex (watch.plex.tv), Sony Crackle (crackle.com), Kanopy (kanopy.com), Hoopla (hoopladigital.com), The Roku Channel (therokuchannel.roku.com), Xumo (xumo.tv), FilmRise (filmrise.com), Filmzie (filmzie.com), Yidio (yidio.com), Internet Archive (archive.org), Bounce TV (bouncetv.com), SolarMovie (solarmovie.pe), AZMovies (azmovies.net), 123Movies, FMovies, YesMovies, HiMovies, Moviesjoy, SFlix (sflix.to), Afdah (afdah.info), Cineb (cineb.net), Vumoo (vumoo.to), StreamM4u (streamm4u.tv), MovieCrumbs (moviecrumbs.net), PrimeWire (primewire.ag), Fandango at Home (vudu.com free tier), WatchFree, SpaceMov (spacemov.tv), Flixtor (flixtor.to), VexMovies (vexmovies.org), 123Chill (123chill.to), Putlocker, StreamLord (streamlord.com), Popcornflix (popcornflix.com), SnagFilms (snagfilms.com), Retrocrush (retrocrush.tv), Classic Cinema Online (classiccinemaonline.com), Open Culture (openculture.com), Watcho (watcho.com).
+
+For each source where this title IS available, include:
 - service: the platform name
-- url: direct URL to watch the title on that service (not just the homepage)
+- url: direct URL to watch the title on that service (not just the homepage — include the specific movie/show page URL if possible)
 - quality: video quality if known (4K, 1080p, 720p, HD, SD)
 - requires_signup: true/false
 - has_ads: true/false
-- embed_url: if there is a YouTube or embeddable player URL, include it, otherwise null
-- notes: any short note (e.g. "Free with library card", "Ad-supported", "Limited time")
-Return only sources that are genuinely free (no paywall). If none are found, return an empty array.`,
+- embed_url: if there is a YouTube embed URL or other embeddable player URL, include it, otherwise null
+- notes: any short note (e.g. "Ad-supported", "Free with library card", "No sign-up needed")
+
+Return ONLY sources where this specific title is confirmed available for free. If none are found return an empty array.`,
       add_context_from_internet: true,
       response_json_schema: {
         type: 'object',
