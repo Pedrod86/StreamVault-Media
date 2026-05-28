@@ -1,24 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Database, BookmarkPlus, Radio, Settings, LogIn } from 'lucide-react';
+import { Home, Database, BookOpen, Radio, Settings, LogIn } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-
-function FourKIcon({ className }) {
-  return (
-    <span className={`font-bold text-[11px] leading-none ${className}`}>4K</span>
-  );
-}
 
 const TABS = [
   { to: '/', label: 'Home', icon: Home },
   { to: '/emby', label: 'Library', icon: Database },
-  { to: '/4k', label: '4K', icon: FourKIcon, is4k: true },
+  { to: '/audiobooks', label: 'Books', icon: BookOpen },
   { to: '/iptv', label: 'IPTV', icon: Radio },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 const TAB_PATHS = new Set(TABS.map(t => t.to));
-
 const SCROLL_KEY = (path) => `sv_scroll_${path}`;
 
 export default function BottomNav() {
@@ -31,43 +24,33 @@ export default function BottomNav() {
     base44.auth.isAuthenticated().then(setIsAuthed).catch(() => setIsAuthed(false));
   }, []);
 
-  // Save scroll position of current tab before leaving it
   useEffect(() => {
     const prev = prevPathRef.current;
     const next = location.pathname;
     if (prev === next) return;
-
-    // Save scroll of the tab we just left (only main tabs)
     if (TAB_PATHS.has(prev)) {
       sessionStorage.setItem(SCROLL_KEY(prev), String(window.scrollY));
     }
-
-    // Restore scroll for the tab we're entering (only main tabs)
     if (TAB_PATHS.has(next)) {
       const saved = sessionStorage.getItem(SCROLL_KEY(next));
-      // Use rAF to wait for page render before scrolling
       requestAnimationFrame(() => {
         window.scrollTo({ top: saved ? parseInt(saved, 10) : 0, behavior: 'instant' });
       });
     }
-
     prevPathRef.current = next;
   }, [location.pathname]);
 
   const handleTabPress = useCallback((e, to) => {
     if (location.pathname === to) {
-      // Already on this tab root — scroll to top
       e.preventDefault();
       sessionStorage.removeItem(SCROLL_KEY(to));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (!TAB_PATHS.has(location.pathname)) {
-      // On a sub-page — navigate to the tapped tab root
       e.preventDefault();
       navigate(to);
     }
   }, [location.pathname, navigate]);
 
-  // Show login button if not authenticated (null = still loading, show nothing; false = not authed)
   if (isAuthed === null) return null;
 
   if (isAuthed === false) {
@@ -104,7 +87,7 @@ export default function BottomNav() {
               to={to}
               onClick={(e) => handleTabPress(e, to)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[44px] py-2 select-none transition-colors ${
-                active ? (tab.is4k ? 'text-yellow-400' : 'text-primary') : 'text-muted-foreground'
+                active ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
               <Icon className="w-5 h-5" />
