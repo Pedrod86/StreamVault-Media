@@ -3,7 +3,8 @@ import Hls from 'hls.js';
 import {
   X, Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, Settings, PictureInPicture2,
-  ChevronLeft, ChevronRight, Wifi, Layers, AudioLines
+  ChevronLeft, ChevronRight, Wifi, Layers, AudioLines,
+  Subtitles, Info, Gauge
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -99,6 +100,17 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const [currentAudio, setCurrentAudio] = useState(0);
   const [isHls, setIsHls] = useState(false);
 
+  // Subtitle tracks
+  const [subtitleTracks, setSubtitleTracks] = useState([]);
+  const [currentSubtitle, setCurrentSubtitle] = useState(-1); // -1 = off
+
+  // A/V sync offset (seconds, applied via audio delay simulation)
+  const [avOffset, setAvOffset] = useState(0);
+
+  // Codec / HDR info
+  const [codecInfo, setCodecInfo] = useState(null); // { video, audio, hdr, container, resolution }
+  const [isHdr, setIsHdr] = useState(false);
+
   // ── controls visibility ────────────────────────────────────────────────────
 
   const resetHideTimer = useCallback(() => {
@@ -168,6 +180,27 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
         setAudioTracks(aTracks);
         setCurrentAudio(hls.audioTrack);
 
+        // Subtitle tracks from HLS manifest
+        const sTracks = hls.subtitleTracks.map((t, i) => ({ index: i, label: t.name || t.lang || `Sub ${i + 1}` }));
+        setSubtitleTracks(sTracks);
+
+        // Codec info from highest quality level
+        const topLevel = data.levels[0];
+        if (topLevel) {
+          const vCodec = topLevel.videoCodec || '';
+          const aCodec = topLevel.audioCodec || '';
+          const hdr = !!(topLevel.videoRange && topLevel.videoRange !== 'SDR');
+          setIsHdr(hdr);
+          setCodecInfo({
+            video: vCodec ? vCodec.split('.')[0].toUpperCase() : 'Unknown',
+            audio: aCodec ? aCodec.split('.')[0].toUpperCase() : 'Unknown',
+            hdr,
+            hdrType: topLevel.videoRange || 'SDR',
+            container: 'HLS',
+            resolution: topLevel.width && topLevel.height ? `${topLevel.width}×${topLevel.height}` : null,
+          });
+        }
+
         v.volume = initVol;
         if (startAt > 0) v.currentTime = startAt;
         v.play().catch(() => {});
@@ -199,15 +232,29 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       setIsHls(false);
       v.src = src;
       v.volume = initVol;
-      if (startAt > 0) {
-        v.addEventListener('loadedmetadata', () => {
-          if (startAt < v.duration - 5) v.currentTime = startAt;
-          v.play().catch(() => {});
-        }, { once: true });
-      } else {
-        v.load();
+
+      // Detect container from URL extension
+      const ext = src.split('?')[0].split('.').pop()?.toUpperCase() || 'MP4';
+      setCodecInfo(prev => ({ ...prev, container: ext }));
+
+      v.addEventListener('loadedmetadata', () => {
+        if (startAt > 0 && startAt < v.duration - 5) v.currentTime = startAt;
         v.play().catch(() => {});
-      }
+
+        // Read subtitle text tracks embedded in video (e.g. MP4 with CEA-608)
+        const tracks = Array.from(v.textTracks || []);
+        const sTracks = tracks.map((t, i) => ({ index: i, label: t.label || t.language || `Sub ${i + 1}` }));
+        if (sTracks.length) setSubtitleTracks(sTracks);
+
+        // Check for HDR via colorSpace (limited browser support)
+        try {
+          if (v.videoWidth >= 3840 || v.videoHeight >= 2160) {
+            setCodecInfo(prev => ({ ...prev, resolution: `${v.videoWidth}×${v.videoHeight}` }));
+          }
+        } catch (_) {}
+      }, { once: true });
+
+      if (!startAt) { v.load(); v.play().catch(() => {}); }
       return () => { v.src = ''; };
     }
   }, [src]);
@@ -232,6 +279,31 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
     if (!hls) return;
     hls.audioTrack = trackIndex;
     setCurrentAudio(trackIndex);
+    setSettingsTab(null);
+    resetHideTimer();
+  }, [resetHideTimer]);
+
+  const switchSubtitle = useCallback((trackIndex) => {
+    const v = videoRef.current;
+    const hls = hlsRef.current;
+    if (hls) {
+      hls.subtitleTrack = trackIndex;
+    } else if (v) {
+      Array.from(v.textTracks || []).forEach((t, i) => {
+        t.mode = i === trackIndex ? 'showing' : 'hidden';
+      });
+    }
+    setCurrentSubtitle(trackIndex);
+    setSettingsTab(null);
+    resetHideTimer();
+  }, [resetHideTimer]);
+
+  const disableSubtitles = useCallback(() => {
+    const v = videoRef.current;
+    const hls = hlsRef.current;
+    if (hls) hls.subtitleTrack = -1;
+    else if (v) Array.from(v.textTracks || []).forEach(t => { t.mode = 'hidden'; });
+    setCurrentSubtitle(-1);
     setSettingsTab(null);
     resetHideTimer();
   }, [resetHideTimer]);
@@ -476,8 +548,18 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       <div className={`absolute inset-0 flex flex-col justify-between transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         {/* Top bar */}
         <div className="flex items-center justify-between px-5 pt-5 pb-10 bg-gradient-to-b from-black/80 to-transparent">
-          <h3 className="text-white font-semibold text-sm truncate max-w-[70%] drop-shadow">{title}</h3>
+          <h3 className="text-white font-semibold text-sm truncate max-w-[60%] drop-shadow">{title}</h3>
           <div className="flex items-center gap-2">
+            {isHdr && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                {codecInfo?.hdrType || 'HDR'}
+              </span>
+            )}
+            {codecInfo?.resolution && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/70">
+                {codecInfo.resolution.includes('3840') || codecInfo.resolution.includes('7680') ? '4K' : codecInfo.resolution}
+              </span>
+            )}
             {isHls && (
               <div className="flex items-center gap-1 text-white/60 text-xs">
                 <Wifi className="w-3 h-3" />
@@ -492,6 +574,27 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
             </button>
           </div>
         </div>
+
+        {/* Codec info panel */}
+        {settingsTab === 'info' && (
+          <div className="absolute top-16 right-4 bg-black/95 border border-white/10 rounded-xl p-4 min-w-[220px] shadow-2xl text-xs space-y-2">
+            <p className="text-white/50 uppercase tracking-widest text-[10px] mb-2">Media Info</p>
+            {codecInfo?.container && <div className="flex justify-between"><span className="text-white/50">Container</span><span className="text-white font-mono">{codecInfo.container}</span></div>}
+            {codecInfo?.video && <div className="flex justify-between"><span className="text-white/50">Video</span><span className="text-white font-mono">{codecInfo.video}</span></div>}
+            {codecInfo?.audio && <div className="flex justify-between"><span className="text-white/50">Audio</span><span className="text-white font-mono">{codecInfo.audio}</span></div>}
+            {codecInfo?.resolution && <div className="flex justify-between"><span className="text-white/50">Resolution</span><span className="text-white font-mono">{codecInfo.resolution}</span></div>}
+            <div className="flex justify-between"><span className="text-white/50">HDR</span><span className={codecInfo?.hdr ? 'text-amber-400 font-semibold' : 'text-white/40'}>{codecInfo?.hdrType || 'SDR'}</span></div>
+            <div className="border-t border-white/10 pt-2 mt-2">
+              <p className="text-white/50 text-[10px] uppercase tracking-widest mb-1.5">A/V Sync Offset</p>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setAvOffset(o => Math.round((o - 0.1) * 10) / 10)} className="w-6 h-6 rounded bg-white/10 text-white text-sm hover:bg-white/20">−</button>
+                <span className="text-white font-mono text-xs flex-1 text-center">{avOffset > 0 ? '+' : ''}{avOffset.toFixed(1)}s</span>
+                <button onClick={() => setAvOffset(o => Math.round((o + 0.1) * 10) / 10)} className="w-6 h-6 rounded bg-white/10 text-white text-sm hover:bg-white/20">+</button>
+                <button onClick={() => setAvOffset(0)} className="text-[10px] text-white/40 hover:text-white/70 ml-1">Reset</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bottom controls */}
         <div className="px-4 pb-5 pt-10 bg-gradient-to-t from-black/90 to-transparent space-y-2">
@@ -550,6 +653,30 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
             <div className="flex items-center gap-1">
               {speed !== 1 && (
                 <span className="text-xs text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-full">{speed}×</span>
+              )}
+
+              {/* Subtitle picker */}
+              {subtitleTracks.length > 0 && (
+                <div className="relative">
+                  <Btn onClick={() => setSettingsTab(t => t === 'subs' ? null : 'subs')} title="Subtitles">
+                    <Subtitles className={`w-4 h-4 ${currentSubtitle >= 0 ? 'text-primary' : ''}`} />
+                  </Btn>
+                  {settingsTab === 'subs' && (
+                    <div className="absolute bottom-10 right-0 bg-black/90 border border-white/10 rounded-xl overflow-hidden shadow-2xl min-w-[150px]">
+                      <p className="text-[10px] text-white/50 uppercase tracking-widest px-3 pt-2 pb-1">Subtitles</p>
+                      <button onClick={disableSubtitles}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${currentSubtitle === -1 ? 'text-primary font-semibold' : 'text-white'}`}>
+                        Off
+                      </button>
+                      {subtitleTracks.map(t => (
+                        <button key={t.index} onClick={() => switchSubtitle(t.index)}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${currentSubtitle === t.index ? 'text-primary font-semibold' : 'text-white'}`}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Audio track picker */}
@@ -613,6 +740,11 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
                   </div>
                 )}
               </div>
+
+              {/* Media info / A-V sync */}
+              <Btn onClick={() => setSettingsTab(t => t === 'info' ? null : 'info')} title="Media Info">
+                <Info className={`w-4 h-4 ${settingsTab === 'info' ? 'text-primary' : ''}`} />
+              </Btn>
 
               {typeof document !== 'undefined' && document.pictureInPictureEnabled && (
                 <Btn onClick={togglePip} title="Picture in Picture">
