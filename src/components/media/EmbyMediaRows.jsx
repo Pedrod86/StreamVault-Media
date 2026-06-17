@@ -70,6 +70,7 @@ export default function EmbyMediaRows() {
   const [browsingItem, setBrowsingItem] = useState(null);
 
   const handlePlay = (item) => {
+    if (!item) return;
     const streamUrl = item.streamUrl || item.video_url || '';
     const match = streamUrl.match(/\/Videos\/([^/]+)\/stream/);
     const embyId = match ? match[1] : item.id;
