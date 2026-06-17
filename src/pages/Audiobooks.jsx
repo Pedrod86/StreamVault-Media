@@ -130,9 +130,19 @@ export default function Audiobooks() {
       setError(null);
       try {
         // Fetch up to 500 at once — avoids rapid-fire requests that hit rate limits
-        const res = await base44.functions.invoke('embyAudiobooks', { startIndex: 0, pageSize: 500 });
-        if (res.data?.error) throw new Error(res.data.error);
-        setBooks(res.data?.items || []);
+        // Fetch in batches to avoid response size limits
+        const allItems = [];
+        let startIdx = 0;
+        const batchSize = 100;
+        while (true) {
+          const res = await base44.functions.invoke('embyAudiobooks', { startIndex: startIdx, pageSize: batchSize });
+          if (res.data?.error) throw new Error(res.data.error);
+          const batch = res.data?.items || [];
+          allItems.push(...batch);
+          if (!res.data?.hasMore || batch.length < batchSize) break;
+          startIdx += batchSize;
+        }
+        setBooks(allItems);
       } catch (e) {
         setError(e.message);
       } finally {
