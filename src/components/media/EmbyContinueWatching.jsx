@@ -7,12 +7,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function ContinueCard({ item, allMedia, onNavigate }) {
   const handleClick = () => {
-    const match = allMedia?.find(m => {
-      const t = m.title?.toLowerCase().trim();
-      const s = (item.seriesName || item.title)?.toLowerCase().trim();
-      return t === s || t === item.title?.toLowerCase().trim();
-    });
-    if (match) onNavigate(`/media/${match.id}`);
+    // 1. Match by Emby ID tag (most reliable)
+    const byEmbyId = allMedia?.find(m => m.tags?.includes(`emby:${item.id}`));
+    if (byEmbyId) { onNavigate(`/media/${byEmbyId.id}`); return; }
+
+    // 2. Match by title
+    const titleToMatch = (item.seriesName || item.title)?.toLowerCase().trim();
+    const byTitle = allMedia?.find(m => m.title?.toLowerCase().trim() === titleToMatch);
+    if (byTitle) { onNavigate(`/media/${byTitle.id}`); return; }
+
+    // 3. Fallback: navigate with emby item ID so MediaDetail can still play it
+    if (item.id) onNavigate(`/media/emby:${item.id}`);
   };
 
   return (

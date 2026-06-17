@@ -21,7 +21,10 @@ import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
 export default function MediaDetail() {
   const urlParams = new URLSearchParams(window.location.search);
   const navigate = useNavigate();
-  const mediaId = window.location.pathname.split('/media/')[1];
+  const rawId = window.location.pathname.split('/media/')[1];
+  const isEmbyDirect = rawId?.startsWith('emby:');
+  const embyDirectId = isEmbyDirect ? rawId.slice(5) : null;
+  const mediaId = isEmbyDirect ? null : rawId;
   const queryClient = useQueryClient();
   const [showPlayer, setShowPlayer] = useState(false);
   const [playerSource, setPlayerSource] = useState('emby'); // 'emby' | 'iptv'
@@ -62,7 +65,7 @@ export default function MediaDetail() {
       const items = await base44.entities.Media.filter({ id: mediaId });
       return items[0];
     },
-    enabled: !!mediaId,
+    enabled: !!mediaId && !isEmbyDirect,
   });
 
   const { data: watchHistory = [] } = useQuery({
@@ -94,15 +97,15 @@ export default function MediaDetail() {
 
   const { data: embyLibrary = [] } = useQuery({
     queryKey: ['embyLiveLibrary', embyServer?.id],
-    enabled: !!embyServer && !!media,
+    enabled: !!embyServer && (!!media || isEmbyDirect),
     staleTime: 5 * 60 * 1000,
     queryFn: () => fetchEmbyFullLibrary(embyServer),
   });
 
-  // Match current media item to an Emby library item by title (case-insensitive)
-  const embyItem = media ? embyLibrary.find(
-    e => e.title.toLowerCase().trim() === media.title.toLowerCase().trim()
-  ) : null;
+  // Match current media item to an Emby library item by title or direct ID
+  const embyItem = embyDirectId
+    ? (embyLibrary.find(e => e.id === embyDirectId) || (embyLibrary.length === 0 ? { id: embyDirectId, title: 'Loading…', type: 'Movie' } : null))
+    : media ? embyLibrary.find(e => e.title.toLowerCase().trim() === media.title.toLowerCase().trim()) : null;
 
   // Try to find a matching VOD in IPTV by title
   const { data: iptvVod = null } = useQuery({
@@ -208,7 +211,24 @@ export default function MediaDetail() {
     return `${m}m`;
   };
 
-  if (isLoading || !media) {
+  // For emby-direct links, build a display object from the embyItem
+  const activeMedia = isEmbyDirect
+    ? (embyItem && embyItem.title !== 'Loading…' ? {
+        id: null,
+        title: embyItem.title,
+        media_type: embyItem.type === 'Series' ? 'tv_show' : 'movie',
+        poster_url: embyItem.posterUrl,
+        backdrop_url: embyItem.backdropUrl,
+        year: embyItem.year,
+        rating: embyItem.rating,
+        duration_minutes: embyItem.duration,
+        genre: embyItem.genres || [],
+        description: embyItem.overview || '',
+        video_url: embyItem.streamUrl,
+      } : null)
+    : media;
+
+  if (isLoading || !activeMedia) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
@@ -218,19 +238,19 @@ export default function MediaDetail() {
 
   // Similar media
   const similar = allMedia.filter(m =>
-    m.id !== media.id &&
-    m.media_type === media.media_type &&
-    m.genre?.some(g => media.genre?.includes(g))
+    m.id !== activeMedia.id &&
+    m.media_type === activeMedia.media_type &&
+    m.genre?.some(g => activeMedia.genre?.includes(g))
   ).slice(0, 10);
 
   return (
     <div className="min-h-screen">
       {/* Backdrop */}
       <div className="relative h-[50vh] sm:h-[60vh] lg:h-[70vh]">
-        {(media.backdrop_url || media.poster_url) && (
+        {(activeMedia.backdrop_url || activeMedia.poster_url) && (
           <img
-            src={media.backdrop_url || media.poster_url}
-            alt={media.title}
+            src={activeMedia.backdrop_url || activeMedia.poster_url}
+            alt={activeMedia.title}
             className="w-full h-full object-cover"
           />
         )}
@@ -257,7 +277,7 @@ export default function MediaDetail() {
             return (
               <PlayerComponent
                 src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true&MediaSourceId=${embyItem.id}`}
-                title={media.title}
+                title={activeMedia.title}
                 startAt={startAt}
                 onClose={() => setShowPlayer(false)}
                 onProgress={(p) => saveProgress.mutate(p)}
@@ -268,23 +288,23 @@ export default function MediaDetail() {
             return (
               <PlayerComponent
                 src={getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')}
-                title={media.title}
+                title={activeMedia.title}
                 onClose={() => setShowPlayer(false)}
               />
             );
           }
-          if (media.video_url) {
+          if (activeMedia.video_url) {
             return (
               <PlayerComponent
-                src={media.video_url}
-                title={media.title}
+                src={activeMedia.video_url}
+                title={activeMedia.title}
                 startAt={startAt}
                 onClose={() => setShowPlayer(false)}
                 onProgress={(p) => saveProgress.mutate(p)}
               />
             );
           }
-          return <TrailerPlayer media={media} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />;
+          return <TrailerPlayer media={activeMedia} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />;
         })()}
 
         {/* Source picker */}
@@ -388,8 +408,8 @@ export default function MediaDetail() {
           {/* Poster */}
           <div className="shrink-0 hidden lg:block">
             <div className="w-[240px] rounded-xl overflow-hidden shadow-2xl shadow-black/40 border border-border/50">
-              {media.poster_url ? (
-                <img src={media.poster_url} alt={media.title} className="w-full aspect-[2/3] object-cover" />
+              {activeMedia.poster_url ? (
+                <img src={activeMedia.poster_url} alt={activeMedia.title} className="w-full aspect-[2/3] object-cover" />
               ) : (
                 <div className="w-full aspect-[2/3] bg-secondary flex items-center justify-center">
                   <Play className="w-12 h-12 text-muted-foreground" />
@@ -402,49 +422,49 @@ export default function MediaDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <Badge className="bg-primary/90 text-primary-foreground text-xs">
-                {media.media_type === 'tv_show' ? 'TV Series' : 'Movie'}
+                {activeMedia.media_type === 'tv_show' ? 'TV Series' : 'Movie'}
               </Badge>
-              {media.content_rating && (
+              {activeMedia.content_rating && (
                 <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground text-xs">
-                  {media.content_rating}
+                  {activeMedia.content_rating}
                 </Badge>
               )}
             </div>
 
             <h1 className="font-heading font-bold text-3xl sm:text-4xl lg:text-5xl text-foreground mb-4">
-              {media.title}
+              {activeMedia.title}
             </h1>
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-5 flex-wrap">
-              {media.rating && (
+              {activeMedia.rating && (
                 <span className="flex items-center gap-1.5 text-foreground">
                   <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="font-semibold">{media.rating.toFixed(1)}</span>
+                  <span className="font-semibold">{activeMedia.rating.toFixed(1)}</span>
                   <span className="text-muted-foreground">/10</span>
                 </span>
               )}
-              {media.year && (
+              {activeMedia.year && (
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> {media.year}
+                  <Calendar className="w-3.5 h-3.5" /> {activeMedia.year}
                 </span>
               )}
-              {media.duration_minutes && (
+              {activeMedia.duration_minutes && (
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
-                  {Math.floor(media.duration_minutes / 60)}h {media.duration_minutes % 60}m
+                  {Math.floor(activeMedia.duration_minutes / 60)}h {activeMedia.duration_minutes % 60}m
                 </span>
               )}
-              {media.season_count && (
+              {activeMedia.season_count && (
                 <span className="flex items-center gap-1.5">
-                  <Tv className="w-3.5 h-3.5" /> {media.season_count} Season{media.season_count > 1 ? 's' : ''}
+                  <Tv className="w-3.5 h-3.5" /> {activeMedia.season_count} Season{activeMedia.season_count > 1 ? 's' : ''}
                 </span>
               )}
             </div>
 
             {/* Genres */}
-            {media.genre?.length > 0 && (
+            {activeMedia.genre?.length > 0 && (
               <div className="flex gap-2 mb-5 flex-wrap">
-                {media.genre.map(g => (
+                {activeMedia.genre.map(g => (
                   <Badge key={g} variant="secondary" className="bg-secondary text-secondary-foreground text-xs rounded-full">
                     {g}
                   </Badge>
@@ -519,7 +539,7 @@ export default function MediaDetail() {
                 onClick={handlePlay}
               >
                 <Play className="w-4 h-4 fill-current" />
-                {embyItem && iptvVod ? 'Play…' : embyItem ? 'Play with Emby' : iptvVod ? 'Play with IPTV' : media.video_url ? 'Play' : 'Watch Trailer'}
+                {embyItem && iptvVod ? 'Play…' : embyItem ? 'Play with Emby' : iptvVod ? 'Play with IPTV' : activeMedia.video_url ? 'Play' : 'Watch Trailer'}
               </Button>
               <Button
                 variant="outline"
@@ -539,7 +559,7 @@ export default function MediaDetail() {
               >
                 <FolderPlus className="w-4 h-4" /> Collections
               </Button>
-              <Link to={`/free-streams?q=${encodeURIComponent(media.title)}`}>
+              <Link to={`/free-streams?q=${encodeURIComponent(activeMedia.title)}`}>
                 <Button
                   variant="outline"
                   className="border-primary/40 text-primary hover:bg-primary/10 gap-2 h-11 px-5 rounded-xl select-none"
@@ -551,41 +571,41 @@ export default function MediaDetail() {
             <AddToCollectionDialog mediaId={mediaId} open={showCollections} onOpenChange={setShowCollections} />
 
             {/* IMDb Panel */}
-            <ImdbPanel media={media} />
+            <ImdbPanel media={activeMedia} />
 
             {/* TVDB Panel */}
-            <TvdbPanel media={media} onEnriched={() => queryClient.invalidateQueries({ queryKey: ['media', mediaId] })} />
+            <TvdbPanel media={activeMedia} onEnriched={() => queryClient.invalidateQueries({ queryKey: ['media', mediaId] })} />
 
             {/* Description */}
-            {media.description && (
+            {activeMedia.description && (
               <div className="mb-8">
                 <h3 className="font-heading font-semibold text-foreground mb-2">Overview</h3>
-                <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">{media.description}</p>
+                <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">{activeMedia.description}</p>
               </div>
             )}
 
             {/* Metadata */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              {media.director && (
+              {activeMedia.director && (
                 <div>
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">Director</span>
                   <p className="text-foreground font-medium mt-0.5 flex items-center gap-2">
-                    <Clapperboard className="w-3.5 h-3.5 text-muted-foreground" /> {media.director}
+                    <Clapperboard className="w-3.5 h-3.5 text-muted-foreground" /> {activeMedia.director}
                   </p>
                 </div>
               )}
-              {media.studio && (
+              {activeMedia.studio && (
                 <div>
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">Studio</span>
-                  <p className="text-foreground font-medium mt-0.5">{media.studio}</p>
+                  <p className="text-foreground font-medium mt-0.5">{activeMedia.studio}</p>
                 </div>
               )}
-              {media.cast?.length > 0 && (
+              {activeMedia.cast?.length > 0 && (
                 <div className="sm:col-span-2">
                   <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-1">
                     <Users className="w-3.5 h-3.5" /> Cast
                   </span>
-                  <p className="text-foreground text-sm">{media.cast.join(', ')}</p>
+                  <p className="text-foreground text-sm">{activeMedia.cast.join(', ')}</p>
                 </div>
               )}
             </div>
