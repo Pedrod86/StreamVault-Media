@@ -83,7 +83,7 @@ export default function AppLayout() {
         {isRootTab ? (
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="https://www.dropbox.com/scl/fi/ub9cr2djh0cb7x57m25c7/streamvault.png?rlkey=png0dj93b0c1m3ksls5t5b7wn&st=4nd7duli&dl=1"
+              src="https://media.base44.com/images/public/69fe35055df988e0955e5c11/50f25d6c4_generated_image.png"
               alt="StreamVault"
               className="w-7 h-7 rounded-xl object-cover"
             />
