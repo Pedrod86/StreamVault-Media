@@ -9,9 +9,11 @@ import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import { scanState, runScan } from '@/lib/embyScanState';
 
 const IS_4K = (item) =>
-  item.tags?.some(t => typeof t === 'string' && (/^4k$/i.test(t) || /4k|2160p|uhd/i.test(t))) ||
-  !!item.title?.match(/\b(4K|UHD|2160p)\b/i) ||
-  !!item.description?.match(/\b(4K|UHD|2160p)\b/i);
+  !!item && (
+    item.tags?.some(t => typeof t === 'string' && (/^4k$/i.test(t) || /4k|2160p|uhd/i.test(t))) ||
+    !!(item.title?.match(/\b(4K|UHD|2160p)\b/i)) ||
+    !!(item.description?.match(/\b(4K|UHD|2160p)\b/i))
+  );
 
 function FourKCard({ item, onPlay }) {
   return (

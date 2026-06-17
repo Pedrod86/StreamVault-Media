@@ -11,8 +11,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { scanState, resetScan, runScan } from '@/lib/embyScanState';
 
 const IS_4K = (item) =>
-  item.tags?.some(t => /^4k$/i.test(t) || /4k|2160p|uhd/i.test(t)) ||
-  !!item.title?.match(/\b(4K|UHD|2160p)\b/i);
+  !!item && (
+    item.tags?.some(t => /^4k$/i.test(t) || /4k|2160p|uhd/i.test(t)) ||
+    !!(item.title?.match(/\b(4K|UHD|2160p)\b/i))
+  );
 
 function MediaCard({ item, onPlay }) {
   return (
