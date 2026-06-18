@@ -6,6 +6,7 @@ import MediaRow from '../components/media/MediaRow';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import LibraryCategories from '../components/dashboard/LibraryCategories';
 import EmbyMediaRows from '../components/media/EmbyMediaRows';
+import EmbyHomeRows from '../components/media/EmbyHomeRows';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import HomeOrderEditor, { loadHomeOrder, saveHomeOrder } from '../components/layout/HomeOrderEditor';
 import GenreRecommendations from '../components/media/GenreRecommendations';
@@ -158,6 +159,7 @@ export default function Home() {
         {activeTab === 'All' && (
           <>
             <EmbyContinueWatching />
+            <EmbyHomeRows />
             {homeOrder.filter(s => !s.hidden).map(section => {
               switch (section.id) {
                 case 'live_tv':       return null;
