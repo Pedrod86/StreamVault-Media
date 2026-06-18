@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { tmdb, fanart } from '@/lib/metadataService';
 import { X, Star, Clock, Calendar, ExternalLink, Loader2, Tv2, Film } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import TmdbWatchActions from './TmdbWatchActions';
 
 function CastAvatar({ member }) {
   return (
@@ -110,6 +111,9 @@ export default function TmdbDetailSheet({ item, onClose }) {
                   ))}
                 </div>
               )}
+
+              {/* Watch controls */}
+              <TmdbWatchActions item={item} details={details} type={type} />
 
               {/* Overview */}
               {details.overview && (
