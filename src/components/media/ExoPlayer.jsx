@@ -23,6 +23,10 @@ function loadPrefs() {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
+// On touch devices the OS controls volume via hardware buttons and rejects
+// programmatic volume changes (slider snaps back), so hide the on-screen slider.
+const IS_TOUCH = typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
+
 function Btn({ children, onClick, title: tip }) {
   return (
     <button
@@ -639,10 +643,12 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
                 <Btn onClick={toggleMute} title="Mute">
                   {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Btn>
-                <div className="w-0 overflow-hidden group-hover/vol:w-20 transition-all duration-200">
-                  <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                    onChange={handleVolumeChange} className="w-20 accent-primary cursor-pointer" />
-                </div>
+                {!IS_TOUCH && (
+                  <div className="w-0 overflow-hidden group-hover/vol:w-20 transition-all duration-200">
+                    <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                      onChange={handleVolumeChange} className="w-20 accent-primary cursor-pointer" />
+                  </div>
+                )}
               </div>
               <span className="text-white/80 text-xs font-mono tabular-nums hidden sm:block ml-1">
                 {formatTime(currentTime)} / {formatTime(duration)}

@@ -42,7 +42,8 @@ export default function EmbySeriesBrowser({ item, server, onClose }) {
   if (playingEpisode) {
     const base = server?.server_url?.replace(/\/$/, '');
     const token = server?.api_token;
-    const src = `${base}/Videos/${playingEpisode.id}/stream?api_key=${token}&Static=true`;
+    // Episodes are often MKV, which browsers can't direct-play — use Emby HLS transcode instead
+    const src = `${base}/Videos/${playingEpisode.id}/master.m3u8?api_key=${token}&MediaSourceId=${playingEpisode.id}&VideoCodec=h264&AudioCodec=aac,mp3&EnableAdaptiveBitrateStreaming=true`;
     return (
       <ExoPlayer
         src={src}
