@@ -346,7 +346,7 @@ export default function EmbyLibrary() {
         const embyId = playingItem.emby_id || tagEmbyId || (urlMatch ? urlMatch[1] : null) || playingItem.id;
         const base = embyServer.server_url?.replace(/\/$/, '');
         const token = embyServer.api_token;
-        const src = `${base}/Videos/${embyId}/stream?api_key=${token}&Static=true&MediaSourceId=${embyId}`;
+        const src = `${base}/Videos/${embyId}/stream?api_key=${token}&Static=true`;
         return (
           <ExoPlayer
             src={src}

@@ -258,7 +258,7 @@ export default function MediaDetail() {
           if (playerSource === 'emby' && embyItem && embyServer) {
             return (
               <PlayerComponent
-                src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true&MediaSourceId=${embyItem.id}`}
+                src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true`}
                 title={activeMedia.title}
                 startAt={startAt}
                 onClose={() => setShowPlayer(false)}

@@ -89,7 +89,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
   const token = server?.api_token || '';
 
   const subParam = activeSub !== -1 ? `&SubtitleStreamIndex=${activeSub}&SubtitleMethod=Encode` : '';
-  const directPlayUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=true&MediaSourceId=${item.id}`;
+  const directPlayUrl = `${base}/Videos/${item.id}/stream?api_key=${token}&Static=true`;
   const hlsUrl = `${base}/Videos/${item.id}/master.m3u8?api_key=${token}&VideoCodec=h264,hevc,av1,vp9&AudioCodec=aac,mp3&RequireAvc=false&EnableAdaptiveBitrateStreaming=true&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&AudioBitRate=320000&MediaSourceId=${item.id}${subParam}`;
   const dashUrl = `${base}/Videos/${item.id}/master.mpd?api_key=${token}&VideoCodec=h264,hevc,av1&AudioCodec=aac&AllowVideoStreamCopy=true&AllowAudioStreamCopy=false&VideoBitDepth=10&EnableAdaptiveBitrateStreaming=true&AudioBitRate=320000&MediaSourceId=${item.id}`;
 
