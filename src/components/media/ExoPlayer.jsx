@@ -27,6 +27,17 @@ const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 // programmatic volume changes (slider snaps back), so hide the on-screen slider.
 const IS_TOUCH = typeof window !== 'undefined' && (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
 
+// If a direct Emby stream can't be decoded by the browser (e.g. MKV), build the
+// HLS transcode URL so the single player can fall back without any caller changes.
+function toEmbyHlsTranscode(directUrl) {
+  const m = directUrl.match(/^(.*)\/Videos\/([^/]+)\/stream/);
+  if (!m) return null;
+  const [, base, id] = m;
+  const token = directUrl.match(/[?&]api_key=([^&]+)/)?.[1] || '';
+  return `${base}/Videos/${id}/master.m3u8?api_key=${token}&MediaSourceId=${id}` +
+    `&VideoCodec=h264&AudioCodec=aac,mp3&EnableAdaptiveBitrateStreaming=true`;
+}
+
 function Btn({ children, onClick, title: tip }) {
   return (
     <button
@@ -79,6 +90,10 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const lastSaved = useRef(0);
   const seekBarRef = useRef(null);
   const lastTap = useRef(0);
+  const triedHlsFallback = useRef(false);
+
+  // The URL currently loaded — may switch from a direct stream to an HLS transcode on error
+  const [activeSrc, setActiveSrc] = useState(src);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -152,9 +167,16 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
 
   // ── HLS.js setup ──────────────────────────────────────────────────────────
 
+  // Reset fallback tracking whenever the caller passes a new source
+  useEffect(() => {
+    triedHlsFallback.current = false;
+    setActiveSrc(src);
+  }, [src]);
+
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !src) return;
+    if (!v || !activeSrc) return;
+    const src = activeSrc;
 
     const isHlsSrc = /\.(m3u8|m3u)/i.test(src) || src.includes('m3u8');
 
@@ -261,7 +283,16 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       if (!startAt) { v.load(); v.play().catch(() => {}); }
       return () => { v.src = ''; };
     }
-  }, [src]);
+  }, [activeSrc]);
+
+  // Single-player reliability: if a direct stream can't be decoded, fall back to HLS transcode
+  const handleVideoError = useCallback(() => {
+    if (triedHlsFallback.current) return;
+    const fallback = toEmbyHlsTranscode(activeSrc);
+    if (!fallback || fallback === activeSrc) return;
+    triedHlsFallback.current = true;
+    setActiveSrc(fallback);
+  }, [activeSrc]);
 
   // ── quality / audio switching ──────────────────────────────────────────────
 
@@ -507,6 +538,7 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
         onWaiting={() => setIsBuffering(true)}
         onCanPlay={() => setIsBuffering(false)}
         onPlaying={() => setIsBuffering(false)}
+        onError={handleVideoError}
         onClick={handleVideoTap}
       />
 
