@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Play, Star } from 'lucide-react';
@@ -66,20 +67,13 @@ const is4K = (m) =>
   m.genre?.some(g => /^(4k|uhd)$/i.test(g));
 
 export default function EmbyMediaRows() {
+  const navigate = useNavigate();
   const [playingItem, setPlayingItem] = useState(null);
   const [browsingItem, setBrowsingItem] = useState(null);
 
   const handlePlay = (item) => {
-    if (!item) return;
-    const streamUrl = item.streamUrl || item.video_url || '';
-    const match = streamUrl.match(/\/Videos\/([^/]+)\/stream/);
-    const embyId = match ? match[1] : item.id;
-
-    if (item.type === 'Series') {
-      setBrowsingItem({ ...item, embyId, media_type: 'tv_show', poster_url: item.posterUrl });
-    } else {
-      setPlayingItem({ ...item, id: embyId });
-    }
+    if (!item?.id) return;
+    navigate(`/media/${item.id}`);
   };
 
   const { data: servers = [] } = useQuery({

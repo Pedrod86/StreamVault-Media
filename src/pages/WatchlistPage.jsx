@@ -3,12 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import MediaGrid from '../components/media/MediaGrid';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookmarkPlus, FolderOpen, Trash2 } from 'lucide-react';
+import { BookmarkPlus, FolderOpen, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function WatchlistPage() {
   const queryClient = useQueryClient();
   const [activeCollection, setActiveCollection] = useState(null); // null = My List
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
 
   const { data: watchlist = [], isLoading: wlLoading } = useQuery({
     queryKey: ['watchlist'],
@@ -33,16 +36,27 @@ export default function WatchlistPage() {
     },
   });
 
+  const createCollection = useMutation({
+    mutationFn: () => base44.entities.Collection.create({ name: newCollectionName.trim(), media_ids: [] }),
+    onSuccess: (collection) => {
+      setNewCollectionName('');
+      setShowCreateCollection(false);
+      setActiveCollection(collection.id);
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+
   const isLoading = wlLoading || mediaLoading || colLoading;
 
   const watchlistMedia = watchlist
     .map(w => allMedia.find(m => m.id === w.media_id))
     .filter(Boolean);
 
+  const getCollectionMedia = (collection) =>
+    (collection?.media_ids || []).map(id => allMedia.find(m => m.id === id)).filter(Boolean);
+
   const selectedCollection = collections.find(c => c.id === activeCollection);
-  const collectionMedia = selectedCollection
-    ? (selectedCollection.media_ids || []).map(id => allMedia.find(m => m.id === id)).filter(Boolean)
-    : [];
+  const collectionMedia = selectedCollection ? getCollectionMedia(selectedCollection) : [];
 
   const displayMedia = activeCollection ? collectionMedia : watchlistMedia;
   const displayTitle = activeCollection ? selectedCollection?.name : 'My List';
@@ -76,25 +90,53 @@ export default function WatchlistPage() {
           >
             <FolderOpen className="w-3.5 h-3.5" />
             {col.name}
-            <span className="text-xs opacity-70">({(col.media_ids || []).length})</span>
+            <span className="text-xs opacity-70">({getCollectionMedia(col).length})</span>
           </button>
         ))}
       </div>
 
-      {/* Title + delete collection button */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Title + collection actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="font-heading font-bold text-2xl sm:text-3xl text-foreground">{displayTitle}</h1>
-        {activeCollection && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive gap-1.5"
-            onClick={() => deleteCollection.mutate(activeCollection)}
-            disabled={deleteCollection.isPending}
-          >
-            <Trash2 className="w-4 h-4" /> Delete Collection
-          </Button>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          {showCreateCollection ? (
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && newCollectionName.trim() && createCollection.mutate()}
+                placeholder="Collection name"
+                className="h-9 bg-secondary border-border"
+              />
+              <Button
+                size="sm"
+                onClick={() => createCollection.mutate()}
+                disabled={!newCollectionName.trim() || createCollection.isPending}
+                className="gap-1.5"
+              >
+                {createCollection.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Create
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowCreateCollection(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowCreateCollection(true)}>
+              <Plus className="w-4 h-4" /> New Collection
+            </Button>
+          )}
+          {activeCollection && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive gap-1.5"
+              onClick={() => deleteCollection.mutate(activeCollection)}
+              disabled={deleteCollection.isPending}
+            >
+              <Trash2 className="w-4 h-4" /> Delete Collection
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
