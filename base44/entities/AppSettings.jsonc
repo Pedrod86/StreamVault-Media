@@ -17,6 +17,30 @@
       "description": "Auto-sync interval in minutes (0 = disabled)",
       "default": 0
     },
+    "api_key_opensubtitles": {
+      "type": "string",
+      "description": "OpenSubtitles API key"
+    },
+    "api_key_tmdb": {
+      "type": "string",
+      "description": "TMDB API key"
+    },
+    "api_key_tvdb": {
+      "type": "string",
+      "description": "TVDB API key"
+    },
+    "api_key_omdb": {
+      "type": "string",
+      "description": "OMDb API key"
+    },
+    "api_key_trakt": {
+      "type": "string",
+      "description": "Trakt client ID"
+    },
+    "api_key_fanart": {
+      "type": "string",
+      "description": "Fanart.tv API key"
+    },
     "description": {
       "type": "string",
       "description": "Optional description or notes for this settings configuration",
