@@ -33,7 +33,18 @@ export default function Login() {
         window.location.href = '/';
       }
     } catch (err) {
-      setError(err.message || 'Login failed');
+      const status = err?.status || err?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Incorrect email or password. Please try again.');
+      } else if (status === 429) {
+        setError('Too many attempts. Please wait a moment and try again.');
+      } else if (status >= 500) {
+        setError('Server error. Please try again in a moment.');
+      } else if (!status) {
+        setError('Can\'t connect right now. Check your internet connection and try again.');
+      } else {
+        setError(err?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
