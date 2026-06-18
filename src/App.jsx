@@ -87,6 +87,7 @@ const AuthenticatedApp = () => {
           <Route path="/watchlist" element={<WatchlistPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/connect-server" element={<ConnectServer />} />
+          <Route path="/ConnectServer" element={<ConnectServer />} />
           <Route path="/add-media" element={<AddMedia />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/history" element={<WatchHistory />} />
@@ -103,6 +104,7 @@ const AuthenticatedApp = () => {
           <Route path="/audiobooks" element={<Audiobooks />} />
           <Route path="/browse" element={<MetadataBrowser />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
+          <Route path="/ServerDashboard" element={<ServerDashboard />} />
         </Route>
       </Route>
 
