@@ -3,26 +3,19 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Play, ExternalLink, Loader2, Film, Tv2, Youtube, Archive } from 'lucide-react';
-import FreeStreamPlayer from '@/components/media/FreeStreamPlayer';
+import { Search, Loader2, Mic, ExternalLink, Play, ChevronDown, ChevronUp, Headphones } from 'lucide-react';
 
 const QUICK_SEARCHES = [
-  'classic black and white movies',
-  'Charlie Chaplin films',
-  'public domain horror movies',
-  'free sci-fi movies',
-  'documentary films',
-  'silent era films',
-  'Buster Keaton comedies',
-  'free animated movies',
+  'true crime', 'technology', 'comedy', 'history', 'science',
+  'news', 'business', 'health & wellness', 'sport', 'storytelling',
 ];
 
 export default function Discover() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [playing, setPlaying] = useState(null); // { title, url, source }
   const [searched, setSearched] = useState(false);
+  const [expandedPodcast, setExpandedPodcast] = useState(null);
 
   const search = async (q) => {
     const term = q || query;
@@ -30,28 +23,21 @@ export default function Discover() {
     setLoading(true);
     setResults([]);
     setSearched(true);
+    setExpandedPodcast(null);
 
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `Find free, legal, embeddable movies or TV shows matching: "${term}".
-Search for content on:
-- YouTube (full free movies, documentaries, public domain content)
-- Internet Archive (archive.org)
-- Any other legal free streaming source
+      prompt: `Find popular podcasts matching: "${term}".
 
-Return up to 12 results. For each result provide:
-- title: exact title
-- year: release year if known
-- description: 1-2 sentence plot summary
-- source: "youtube", "archive", or "other"
-- embed_url: the DIRECT embeddable URL:
-  * For YouTube: use https://www.youtube-nocookie.com/embed/VIDEO_ID format (NOT youtube.com)
-  * For Internet Archive: use https://archive.org/embed/IDENTIFIER format
-  * For other sources: direct embed URL
-- watch_url: the regular watch page URL (for "open in new tab")
-- genre: main genre (e.g. "Comedy", "Horror", "Documentary")
-- duration: approximate duration string e.g. "1h 32m"
-
-Only include content that is genuinely free and legally embeddable. Prioritize well-known public domain classics and popular free content.`,
+Return up to 12 podcasts. For each provide:
+- title: podcast name
+- author: host or creator name
+- description: 2-3 sentence description of the podcast
+- category: main category (e.g. "True Crime", "Comedy", "Technology")
+- language: language (e.g. "English")
+- feed_url: RSS feed URL if known (or empty string)
+- website_url: official website or listen page URL
+- image_url: podcast cover art URL (use a real image URL if known, otherwise empty string)
+- episodes: array of 3 recent/notable episode titles (just strings)`,
       add_context_from_internet: true,
       response_json_schema: {
         type: 'object',
@@ -62,13 +48,14 @@ Only include content that is genuinely free and legally embeddable. Prioritize w
               type: 'object',
               properties: {
                 title: { type: 'string' },
-                year: { type: 'string' },
+                author: { type: 'string' },
                 description: { type: 'string' },
-                source: { type: 'string' },
-                embed_url: { type: 'string' },
-                watch_url: { type: 'string' },
-                genre: { type: 'string' },
-                duration: { type: 'string' },
+                category: { type: 'string' },
+                language: { type: 'string' },
+                feed_url: { type: 'string' },
+                website_url: { type: 'string' },
+                image_url: { type: 'string' },
+                episodes: { type: 'array', items: { type: 'string' } },
               },
             },
           },
@@ -84,37 +71,16 @@ Only include content that is genuinely free and legally embeddable. Prioritize w
     if (e.key === 'Enter') search();
   };
 
-  const sourceIcon = (source) => {
-    if (source === 'youtube') return <Youtube className="w-3 h-3 text-red-400" />;
-    if (source === 'archive') return <Archive className="w-3 h-3 text-amber-400" />;
-    return <Film className="w-3 h-3 text-primary" />;
-  };
-
-  const sourceLabel = (source) => {
-    if (source === 'youtube') return 'YouTube';
-    if (source === 'archive') return 'Archive.org';
-    return 'Free Stream';
-  };
-
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      {playing && (
-        <FreeStreamPlayer
-          title={playing.title}
-          embedUrl={playing.embed_url}
-          watchUrl={playing.watch_url}
-          onClose={() => setPlaying(null)}
-        />
-      )}
-
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-heading font-bold text-foreground mb-1 flex items-center gap-2">
-            <Film className="w-7 h-7 text-primary" /> Discover Free Movies
+            <Mic className="w-7 h-7 text-primary" /> Find Your Podcast
           </h1>
           <p className="text-muted-foreground text-sm">
-            Search for free, legal movies &amp; shows from YouTube, Internet Archive, and public domain sources.
+            Search millions of podcasts — discover new shows, browse episodes, and find your next favourite listen.
           </p>
         </div>
 
@@ -126,7 +92,7 @@ Only include content that is genuinely free and legally embeddable. Prioritize w
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Search free movies, genres, actors…"
+              placeholder="Search by topic, show name, or host…"
               className="pl-9 bg-card border-border"
             />
           </div>
@@ -139,13 +105,13 @@ Only include content that is genuinely free and legally embeddable. Prioritize w
         {/* Quick searches */}
         {!searched && (
           <div className="mb-8">
-            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Quick searches</p>
+            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Browse by topic</p>
             <div className="flex flex-wrap gap-2">
               {QUICK_SEARCHES.map((qs) => (
                 <button
                   key={qs}
                   onClick={() => { setQuery(qs); search(qs); }}
-                  className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
                 >
                   {qs}
                 </button>
@@ -158,97 +124,120 @@ Only include content that is genuinely free and legally embeddable. Prioritize w
         {loading && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-muted-foreground text-sm">Searching free & legal streams…</p>
+            <p className="text-muted-foreground text-sm">Finding podcasts…</p>
           </div>
         )}
 
         {/* Results */}
         {!loading && results.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {results.map((item, i) => (
-              <div
-                key={i}
-                className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all group"
-              >
-                {/* Thumbnail placeholder with play overlay */}
+          <div className="space-y-3">
+            {results.map((pod, i) => {
+              const isExpanded = expandedPodcast === i;
+              return (
                 <div
-                  className="relative aspect-video bg-secondary flex items-center justify-center cursor-pointer"
-                  onClick={() => setPlaying(item)}
+                  key={i}
+                  className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/40 transition-all"
                 >
-                  {item.source === 'youtube' ? (
-                    <Youtube className="w-10 h-10 text-red-400/40" />
-                  ) : item.source === 'archive' ? (
-                    <Archive className="w-10 h-10 text-amber-400/40" />
-                  ) : (
-                    <Film className="w-10 h-10 text-primary/40" />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-all">
-                    <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                      <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                  <div className="flex gap-4 p-4">
+                    {/* Cover art */}
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-secondary shrink-0 overflow-hidden flex items-center justify-center">
+                      {pod.image_url ? (
+                        <img
+                          src={pod.image_url}
+                          alt={pod.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <Headphones className="w-8 h-8 text-muted-foreground/40" />
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="font-heading font-semibold text-foreground leading-tight line-clamp-1">
+                            {pod.title}
+                          </h3>
+                          {pod.author && (
+                            <p className="text-xs text-muted-foreground mt-0.5">by {pod.author}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {pod.website_url && (
+                            <a
+                              href={pod.website_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                              title="Open podcast website"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                          {pod.feed_url && (
+                            <a
+                              href={pod.feed_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-orange-400 transition-colors"
+                              title="RSS Feed"
+                            >
+                              <Play className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {pod.category && (
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">{pod.category}</Badge>
+                        )}
+                        {pod.language && pod.language.toLowerCase() !== 'english' && (
+                          <span className="text-xs text-muted-foreground">{pod.language}</span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">
+                        {pod.description}
+                      </p>
+
+                      {pod.episodes?.length > 0 && (
+                        <button
+                          className="flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                          onClick={() => setExpandedPodcast(isExpanded ? null : i)}
+                        >
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {isExpanded ? 'Hide episodes' : `${pod.episodes.length} notable episodes`}
+                        </button>
+                      )}
                     </div>
                   </div>
-                  {item.duration && (
-                    <span className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                      {item.duration}
-                    </span>
+
+                  {/* Episodes */}
+                  {isExpanded && pod.episodes?.length > 0 && (
+                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Notable Episodes</p>
+                      {pod.episodes.map((ep, j) => (
+                        <div key={j} className="flex items-center gap-2 text-sm text-foreground/80 bg-secondary/40 rounded-lg px-3 py-2">
+                          <Headphones className="w-3.5 h-3.5 text-primary shrink-0" />
+                          {ep}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                {/* Info */}
-                <div className="p-3">
-                  <div className="flex items-start justify-between gap-1 mb-1">
-                    <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
-                      {item.title}
-                    </h3>
-                    {item.watch_url && (
-                      <a
-                        href={item.watch_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      {sourceIcon(item.source)} {sourceLabel(item.source)}
-                    </span>
-                    {item.year && <span className="text-xs text-muted-foreground">· {item.year}</span>}
-                    {item.genre && (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4">
-                        {item.genre}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {item.description}
-                    </p>
-                  )}
-
-                  <Button
-                    size="sm"
-                    className="w-full mt-3 gap-1.5 h-8 text-xs"
-                    onClick={() => setPlaying(item)}
-                  >
-                    <Play className="w-3 h-3" fill="currentColor" /> Watch Free
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Empty state */}
         {!loading && searched && results.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-            <Tv2 className="w-12 h-12 text-muted-foreground/30" />
-            <p className="text-muted-foreground">No results found. Try a different search term.</p>
+            <Mic className="w-12 h-12 text-muted-foreground/30" />
+            <p className="text-muted-foreground">No podcasts found. Try a different search term.</p>
           </div>
         )}
       </div>
