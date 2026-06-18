@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Radio, Search, Play, Tv, Film, Star, X, Loader2, AlertCircle, CalendarDays } from 'lucide-react';
+import { Radio, Search, Play, X, AlertCircle, CalendarDays } from 'lucide-react';
 import ExoPlayer from '@/components/media/ExoPlayer';
 import EpgGuide from '@/components/iptv/EpgGuide';
 import { Input } from '@/components/ui/input';
@@ -9,16 +9,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import {
   getLiveStreams, getLiveCategories,
-  getVodStreams, getVodCategories,
-  getSeriesStreams, getSeriesCategories,
-  getLiveStreamUrl, getVodStreamUrl,
+  getLiveStreamUrl,
 } from '@/lib/xtreamApi';
 
 const TABS = [
   { id: 'live', label: 'Live TV', icon: Radio },
   { id: 'epg', label: 'EPG Guide', icon: CalendarDays },
-  { id: 'vod', label: 'Movies', icon: Film },
-  { id: 'series', label: 'Series', icon: Tv },
 ];
 
 function ChannelCard({ item, onPlay }) {
@@ -53,73 +49,18 @@ function ChannelCard({ item, onPlay }) {
   );
 }
 
-function MediaCard({ item, onPlay, showRating }) {
-  return (
-    <div className="cursor-pointer group flex flex-col" onClick={() => onPlay(item)}>
-      <div className="relative rounded-xl overflow-hidden bg-secondary aspect-[2/3] mb-2">
-        {item.stream_icon ? (
-          <img
-            src={item.stream_icon}
-            alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-            onError={e => { e.target.style.display = 'none'; }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Film className="w-8 h-8 text-muted-foreground/40" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-            <Play className="w-5 h-5 fill-white text-white ml-0.5" />
-          </div>
-        </div>
-        {showRating && item.rating && parseFloat(item.rating) > 0 && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 rounded-full px-1.5 py-0.5">
-            <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-            <span className="text-white text-[10px] font-medium">{parseFloat(item.rating).toFixed(1)}</span>
-          </div>
-        )}
-      </div>
-      <p className="text-xs text-foreground font-medium truncate leading-tight">{item.name}</p>
-      {item.year && <p className="text-[10px] text-muted-foreground mt-0.5">{item.year}</p>}
-    </div>
-  );
-}
-
-function CategoryRow({ title, items, tab, onPlay }) {
+function CategoryRow({ title, items, onPlay }) {
   if (!items.length) return null;
 
-  // Live TV: grid layout (like a channel grid)
-  if (tab === 'live') {
-    return (
-      <div className="mb-6">
-        <div className="flex items-center justify-between px-4 sm:px-6 mb-3">
-          <h2 className="font-heading font-bold text-sm text-foreground">{title}</h2>
-          <span className="text-xs text-muted-foreground">{items.length}</span>
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 px-4 sm:px-6">
-          {items.map(item => (
-            <ChannelCard key={item.stream_id || item.num} item={item} onPlay={onPlay} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // VOD / Series: horizontal scroll row (same as Emby)
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between px-4 sm:px-6 mb-3">
-        <h2 className="font-heading font-bold text-base text-foreground">{title}</h2>
+        <h2 className="font-heading font-bold text-sm text-foreground">{title}</h2>
         <span className="text-xs text-muted-foreground">{items.length}</span>
       </div>
-      <div className="flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2" style={{ scrollbarWidth: 'none' }}>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 px-4 sm:px-6">
         {items.map(item => (
-          <div key={item.stream_id || item.series_id} className="shrink-0 w-[140px] sm:w-[160px]">
-            <MediaCard item={item} onPlay={onPlay} showRating />
-          </div>
+          <ChannelCard key={item.stream_id || item.num} item={item} onPlay={onPlay} />
         ))}
       </div>
     </div>
@@ -159,10 +100,6 @@ export default function IPTV() {
         let cats = [], items = [];
         if (tab === 'live') {
           [cats, items] = await Promise.all([getLiveCategories(xtreamServer), getLiveStreams(xtreamServer)]);
-        } else if (tab === 'vod') {
-          [cats, items] = await Promise.all([getVodCategories(xtreamServer), getVodStreams(xtreamServer)]);
-        } else if (tab === 'series') {
-          [cats, items] = await Promise.all([getSeriesCategories(xtreamServer), getSeriesStreams(xtreamServer)]);
         } else {
           // epg tab — no streams to load
           if (!cancelled) setLoading(false);
@@ -211,25 +148,10 @@ export default function IPTV() {
   }, [streams, categories, search, activeCat]);
 
   const handlePlay = (item) => {
-    let url = '';
-    if (tab === 'live') {
-      // Use m3u8 (HLS) for live streams — better compatibility than .ts
-      url = getLiveStreamUrl(xtreamServer, item.stream_id, 'm3u8');
-    } else if (tab === 'vod') {
-      url = getVodStreamUrl(xtreamServer, item.stream_id, item.container_extension || 'mp4');
-    } else {
-      url = getVodStreamUrl(xtreamServer, item.series_id, 'mp4');
-    }
-    setPlaying({ url, name: item.name, id: item.stream_id || item.series_id });
+    // Use m3u8 (HLS) for live streams — better compatibility than .ts
+    const url = getLiveStreamUrl(xtreamServer, item.stream_id, 'm3u8');
+    setPlaying({ url, name: item.name, id: item.stream_id });
   };
-
-  // Fake server object for EmbyVideoPlayer compatibility
-  const fakeServer = xtreamServer ? { server_url: '', api_token: '' } : null;
-  const fakeItem = playing ? {
-    id: playing.id,
-    title: playing.name,
-    _directUrl: playing.url,
-  } : null;
 
   if (!xtreamServer) {
     return (
@@ -295,7 +217,7 @@ export default function IPTV() {
         <Input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder={`Search ${tab === 'live' ? 'channels' : tab === 'vod' ? 'movies' : 'series'}…`}
+          placeholder="Search channels…"
           className="pl-9 bg-secondary border-border rounded-xl"
         />
         {search && (
@@ -332,9 +254,9 @@ export default function IPTV() {
           {[1, 2, 3].map(i => (
             <div key={i}>
               <Skeleton className="h-4 w-32 mb-3 bg-secondary" />
-              <div className={tab === 'live' ? 'grid grid-cols-3 sm:grid-cols-6 gap-3' : 'flex gap-3'}>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
                 {[1,2,3,4,5,6].map(j => (
-                  <Skeleton key={j} className={`rounded-xl bg-secondary shrink-0 ${tab === 'live' ? 'aspect-video' : 'w-[130px] h-[200px]'}`} />
+                  <Skeleton key={j} className="rounded-xl bg-secondary shrink-0 aspect-video" />
                 ))}
               </div>
             </div>
@@ -354,7 +276,7 @@ export default function IPTV() {
       {!loading && !error && grouped && (
         <div>
           {grouped.map(([catName, items]) => (
-            <CategoryRow key={catName} title={catName} items={items} tab={tab} onPlay={handlePlay} />
+            <CategoryRow key={catName} title={catName} items={items} onPlay={handlePlay} />
           ))}
         </div>
       )}
@@ -367,14 +289,10 @@ export default function IPTV() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground mb-3">{filtered.length} results</p>
-              <div className={tab === 'live'
-                ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3'
-                : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3'
-              }>
-                {filtered.map(item => tab === 'live'
-                  ? <ChannelCard key={item.stream_id} item={item} onPlay={handlePlay} />
-                  : <MediaCard key={item.stream_id || item.series_id} item={item} onPlay={handlePlay} showRating />
-                )}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                {filtered.map(item => (
+                  <ChannelCard key={item.stream_id} item={item} onPlay={handlePlay} />
+                ))}
               </div>
             </>
           )}
