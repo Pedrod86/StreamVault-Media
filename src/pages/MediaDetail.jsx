@@ -187,6 +187,13 @@ export default function MediaDetail() {
     }
   };
 
+  // Resume instantly — jump straight to the exact saved second, no prompt
+  const handleResume = () => {
+    setPlayerSource(embyItem ? 'emby' : 'iptv');
+    setStartAt(historyEntry.progress_seconds);
+    setShowPlayer(true);
+  };
+
   const formatTime = (secs) => {
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
@@ -457,13 +464,22 @@ export default function MediaDetail() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 mb-8">
+            <div className="flex gap-3 mb-8 flex-wrap">
+              {historyEntry?.progress_seconds > 30 && (
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-11 px-6 rounded-xl font-semibold select-none"
+                  onClick={handleResume}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Resume {formatTime(historyEntry.progress_seconds)}
+                </Button>
+              )}
               <Button
-                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-11 px-6 rounded-xl font-semibold select-none"
-                onClick={handlePlay}
+                className={`gap-2 h-11 px-6 rounded-xl font-semibold select-none ${historyEntry?.progress_seconds > 30 ? 'bg-secondary hover:bg-secondary/80 text-secondary-foreground' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
+                onClick={() => { setPlayerSource(embyItem ? 'emby' : 'iptv'); setStartAt(0); setShowPlayer(true); }}
               >
                 <Play className="w-4 h-4 fill-current" />
-                {embyItem ? 'Play' : iptvVod ? 'Play with IPTV' : activeMedia.video_url ? 'Play' : 'Watch Trailer'}
+                {historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem ? 'Play' : iptvVod ? 'Play with IPTV' : activeMedia.video_url ? 'Play' : 'Watch Trailer')}
               </Button>
               <Button
                 variant="outline"
