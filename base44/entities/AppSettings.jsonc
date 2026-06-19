@@ -12,6 +12,10 @@
       "description": "Accent/secondary color (HSL)",
       "default": "199 89% 48%"
     },
+    "theme_label": {
+      "type": "string",
+      "description": "Exact label of the selected theme preset (e.g. '\ud83c\udf0c Midnight Blue'). Used to restore the full theme including background."
+    },
     "sync_interval_minutes": {
       "type": "number",
       "description": "Auto-sync interval in minutes (0 = disabled)",

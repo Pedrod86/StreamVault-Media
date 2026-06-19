@@ -720,10 +720,12 @@ export default function Settings() {
     queryFn: () => base44.entities.MediaServer.list('-created_date'),
   });
 
-  // Load existing settings and re-apply theme
+  // Load existing settings and re-apply theme.
+  // Match by exact label first, fall back to primary for older saves.
   useEffect(() => {
     if (!settings) return;
-    const themeIdx = THEMES.findIndex(t => t.primary === settings.accent_color);
+    let themeIdx = settings.theme_label ? THEMES.findIndex(t => t.label === settings.theme_label) : -1;
+    if (themeIdx < 0) themeIdx = THEMES.findIndex(t => t.primary === settings.accent_color);
     if (themeIdx >= 0) {
       setSelectedTheme(themeIdx);
       const t = THEMES[themeIdx];
@@ -752,7 +754,7 @@ export default function Settings() {
   const saveThemeMutation = useMutation({
     mutationFn: () => {
       const t = THEMES[selectedTheme];
-      return saveSettings({ accent_color: t.primary, secondary_color: t.accent }, () => {
+      return saveSettings({ accent_color: t.primary, secondary_color: t.accent, theme_label: t.label }, () => {
         setSavedTheme(true);
         setTimeout(() => setSavedTheme(false), 2500);
       });

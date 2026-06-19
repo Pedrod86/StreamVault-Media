@@ -74,10 +74,12 @@ export function applyTheme(primary, accent, cyberpunk = false, bg = null) {
   }
 }
 
-// Restore a saved theme from AppSettings (matched by its stored accent_color = primary).
+// Restore a saved theme from AppSettings.
+// Match by exact theme_label first (reliable), then fall back to accent_color for older saves.
 export function applySavedTheme(settings) {
-  if (!settings?.accent_color) return;
-  const t = THEMES.find(t => t.primary === settings.accent_color);
+  if (!settings) return;
+  const t = (settings.theme_label && THEMES.find(t => t.label === settings.theme_label))
+    || (settings.accent_color && THEMES.find(t => t.primary === settings.accent_color));
   if (t) {
     applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg);
   } else {
