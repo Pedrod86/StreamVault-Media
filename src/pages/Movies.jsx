@@ -12,15 +12,30 @@ import LibraryFilterBar from '../components/media/LibraryFilterBar';
 const PAGE_SIZE = 48;
 
 export default function Movies() {
-  const [page, setPage] = useState(0);
+  const params = new URLSearchParams(window.location.search);
+  const [page, setPage] = useState(() => parseInt(params.get('page') || '0', 10));
   const [search, setSearch] = useState('');
   const [genre, setGenre] = useState('');
   const [years, setYears] = useState('');
-  const [sortBy, setSortBy] = useState('SortName');
+  const [sortBy, setSortBy] = useState(() => params.get('sort') || 'SortName');
   const debouncedSearch = useDebounce(search, 400);
+  const isFirstRun = React.useRef(true);
 
-  // Reset to page 0 on filter change
-  useEffect(() => { setPage(0); }, [debouncedSearch, genre, years, sortBy]);
+  // Reset to page 0 when filters change — but skip the first render so a
+  // restored page (from the URL) survives navigating back from a movie.
+  useEffect(() => {
+    if (isFirstRun.current) { isFirstRun.current = false; return; }
+    setPage(0);
+  }, [debouncedSearch, genre, years, sortBy]);
+
+  // Keep sort + page in the URL so they persist when navigating away and back.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    sortBy === 'SortName' ? p.delete('sort') : p.set('sort', sortBy);
+    page === 0 ? p.delete('page') : p.set('page', String(page));
+    const qs = p.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [sortBy, page]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['embyMovies', page, debouncedSearch, genre, years, sortBy],
