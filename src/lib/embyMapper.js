@@ -117,6 +117,8 @@ export function mapEmbyItem(item, base, token) {
     content_rating: mapContentRating(item.OfficialRating),
     season_count: isSeries && item.ChildCount ? Number(item.ChildCount) : undefined,
     episode_count: isSeries && item.RecursiveItemCount ? Number(item.RecursiveItemCount) : undefined,
-    tags: ['emby'],
+    // Persist the Emby item ID as a tag so series (which have no video_url)
+    // can resolve their Emby ID for episode browsing/playback.
+    tags: item.Id ? ['emby', `emby:${item.Id}`] : ['emby'],
   };
 }
