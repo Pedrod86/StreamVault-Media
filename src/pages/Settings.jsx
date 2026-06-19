@@ -1038,13 +1038,6 @@ export default function Settings() {
         </div>
         <p className="text-xs text-muted-foreground -mt-2">Quick access to advanced tools and server management.</p>
         <div className="grid grid-cols-2 gap-3">
-          <Link to="/free-streams" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">
-            <Zap className="w-5 h-5 text-accent shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Free Streams</p>
-              <p className="text-[11px] text-muted-foreground">Browse free content</p>
-            </div>
-          </Link>
           <Link to="/tv-guide" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">
             <LayoutGrid className="w-5 h-5 text-accent shrink-0" />
             <div>
