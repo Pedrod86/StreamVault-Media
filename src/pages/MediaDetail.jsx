@@ -13,6 +13,7 @@ import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
 import ImdbPanel from '../components/media/ImdbPanel';
 import TvdbPanel from '../components/media/TvdbPanel';
+import TmdbCastInfo from '../components/media/TmdbCastInfo';
 import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
 
 export default function MediaDetail() {
@@ -545,15 +546,14 @@ export default function MediaDetail() {
                   <p className="text-foreground font-medium mt-0.5">{activeMedia.studio}</p>
                 </div>
               )}
-              {activeMedia.cast?.length > 0 && (
-                <div className="sm:col-span-2">
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                    <Users className="w-3.5 h-3.5" /> Cast
-                  </span>
-                  <p className="text-foreground text-sm">{activeMedia.cast.join(', ')}</p>
-                </div>
-              )}
             </div>
+
+            {/* Rich cast & crew from TMDB */}
+            <TmdbCastInfo
+              title={activeMedia.title}
+              year={activeMedia.year}
+              mediaType={activeMedia.media_type}
+            />
           </div>
         </motion.div>
 
