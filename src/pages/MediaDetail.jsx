@@ -8,7 +8,6 @@ import { Play, BookmarkPlus, BookmarkCheck, Star, Clock, Calendar, Users, Clappe
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import MediaRow from '../components/media/MediaRow';
-import TrailerPlayer from '../components/media/TrailerPlayer';
 import ExoPlayer from '@/components/media/ExoPlayer';
 import EmbySeriesBrowser from '@/components/media/EmbySeriesBrowser';
 import AddToCollectionDialog from '../components/media/AddToCollectionDialog';
@@ -308,7 +307,17 @@ export default function MediaDetail() {
               />
             );
           }
-          return <TrailerPlayer media={activeMedia} startAt={startAt} onClose={() => setShowPlayer(false)} onProgress={(p) => saveProgress.mutate(p)} />;
+          return (
+            <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center px-6 text-center">
+              <div>
+                <p className="text-white text-lg font-semibold mb-2">No playable source</p>
+                <p className="text-white/60 text-sm mb-5">This title isn't available to stream right now.</p>
+                <Button onClick={() => setShowPlayer(false)} className="bg-primary hover:bg-primary/90 rounded-xl px-6">
+                  Close
+                </Button>
+              </div>
+            </div>
+          );
         })()}
 
         {/* Resume prompt */}
@@ -483,7 +492,7 @@ export default function MediaDetail() {
                 onClick={() => { setPlayerSource(embyItem ? 'emby' : 'iptv'); setStartAt(0); setShowPlayer(true); }}
               >
                 <Play className="w-4 h-4 fill-current" />
-                {historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem ? 'Play' : iptvVod ? 'Play with IPTV' : activeMedia.video_url ? 'Play' : 'Watch Trailer')}
+                {historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem ? 'Play' : iptvVod ? 'Play with IPTV' : 'Play')}
               </Button>
               <Button
                 variant="outline"
