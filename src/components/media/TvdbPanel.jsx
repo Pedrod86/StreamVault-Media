@@ -44,7 +44,9 @@ export default function TvdbPanel({ media, onEnriched }) {
     if (data.contentRating && !media.content_rating) updates.content_rating = data.contentRating;
 
     if (Object.keys(updates).length > 0) {
-      await base44.entities.Media.update(media.id, updates);
+      if (media.id) {
+        await base44.entities.Media.update(media.id, updates);
+      }
       onEnriched?.(updates);
     }
     setSaving(false);
