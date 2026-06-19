@@ -211,10 +211,10 @@ function QuickSyncSection() {
     try {
       for (const server of embyServers) {
         let startIndex = 0;
-        const PAGE = 200; // smaller pages so we can stop early
+        const PAGE = 500;
 
         while (true) {
-          // Sort by DateCreated descending — newest items arrive first
+          // Scan the whole library so scattered gaps get filled, not just the newest items
           const res = await base44.functions.invoke('embyLibrary', {
             startIndex,
             pageSize: PAGE,
@@ -247,17 +247,15 @@ function QuickSyncSection() {
           });
 
           const res2 = await base44.functions.invoke('embySync', { server, items: dbItems });
-          const pageCreated = res2.data?.created || 0;
-          totalCreated += pageCreated;
+          totalCreated += res2.data?.created || 0;
           totalUpdated += res2.data?.updated || 0;
           setStats({ fetched: totalFetched, created: totalCreated, updated: totalUpdated });
 
-          // Stop early: if this whole page had zero new items, we've caught up
-          if (pageCreated === 0) break;
+          // Keep going through the entire library — embySync only writes items not already present
           if (!hasMore) break;
           startIndex += items.length;
-          // Small pause between pages to avoid hitting the database rate limit
-          await new Promise(r => setTimeout(r, 400));
+          // Pause between pages to avoid hitting the database rate limit
+          await new Promise(r => setTimeout(r, 600));
         }
       }
 
@@ -281,7 +279,7 @@ function QuickSyncSection() {
         )}
       </div>
       <p className="text-xs text-muted-foreground -mt-2">
-        Fetches newest Emby items first and stops as soon as it reaches items already in your database. Fast incremental sync — great for picking up recently added content.
+        Scans your entire Emby library and adds only the items missing from your database — leaves everything you already have untouched. Great for filling in gaps.
       </p>
 
       {embyServers.length === 0 && (
