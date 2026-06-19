@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { BookmarkCheck, BookmarkPlus, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { BookmarkCheck, BookmarkPlus, CheckCircle2, Clock, Loader2, Play } from 'lucide-react';
 
 export default function TmdbWatchActions({ item, details, type }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [progressPercent, setProgressPercent] = useState([50]);
   const [showProgress, setShowProgress] = useState(false);
 
@@ -32,6 +34,13 @@ export default function TmdbWatchActions({ item, details, type }) {
   });
 
   const isInWatchlist = localItem && watchlist.some(w => w.media_id === localItem.id);
+
+  // You own this title and it has something playable (local file, Emby, or stream)
+  const canPlay = !!localItem && !!(
+    localItem.video_url ||
+    localItem.emby_id ||
+    localItem.tags?.some(t => /^emby/.test(t))
+  );
 
   const ensureMedia = async () => {
     if (localItem) return localItem;
@@ -99,6 +108,14 @@ export default function TmdbWatchActions({ item, details, type }) {
 
   return (
     <div className="space-y-3">
+      {canPlay && (
+        <Button
+          className="w-full gap-2 bg-primary hover:bg-primary/90 font-semibold"
+          onClick={() => navigate(`/media/${localItem.id}`)}
+        >
+          <Play className="w-4 h-4 fill-current" /> Play Now
+        </Button>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <Button
           variant="outline"
