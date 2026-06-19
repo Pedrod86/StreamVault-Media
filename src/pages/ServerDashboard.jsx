@@ -5,10 +5,11 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import {
   Server, Plus, RefreshCw, Trash2, CheckCircle2,
-  AlertCircle, Loader2, Wifi, WifiOff, Clock, Database
+  AlertCircle, Loader2, Wifi, WifiOff, Clock, Database, Pencil
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SyncServerButton from '@/components/server/SyncServerButton';
+import EditServerDialog from '@/components/server/EditServerDialog';
 
 const SERVER_META = {
   plex:     { name: 'Plex',     color: 'from-yellow-500 to-orange-500', border: 'border-yellow-500/30', bg: 'bg-yellow-500/10', text: 'text-yellow-400' },
@@ -90,6 +91,7 @@ function ServerCard({ server, onDelete, deleting }) {
   const meta = SERVER_META[server.server_type] || SERVER_META.emby;
   const { status, latency, ping } = useServerPing(server);
   const isTrakt = server.server_type === 'trakt';
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <motion.div
@@ -148,10 +150,15 @@ function ServerCard({ server, onDelete, deleting }) {
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-foreground ml-auto" onClick={ping}>
           <RefreshCw className="w-3.5 h-3.5" /> Ping
         </Button>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => setEditOpen(true)}>
+          <Pencil className="w-3.5 h-3.5" /> Edit
+        </Button>
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-destructive" onClick={onDelete} disabled={deleting}>
           <Trash2 className="w-3.5 h-3.5" /> Remove
         </Button>
       </div>
+
+      {editOpen && <EditServerDialog server={server} open={editOpen} onOpenChange={setEditOpen} />}
     </motion.div>
   );
 }
