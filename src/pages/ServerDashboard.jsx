@@ -25,7 +25,20 @@ function useServerPing(server) {
   const ping = async () => {
     setStatus('checking');
     setLatency(null);
-    if (server.server_type === 'trakt') { setStatus('ok'); return; }
+
+    if (server.server_type === 'trakt') {
+      try {
+        const t0 = Date.now();
+        const res = await base44.functions.invoke('traktSync', { action: 'ping' });
+        if (res.data?.error || !res.data?.ok) throw new Error(res.data?.error || 'Ping failed');
+        setLatency(Date.now() - t0);
+        setStatus('ok');
+      } catch (err) {
+        setStatus('error');
+      }
+      return;
+    }
+
     try {
       let base = (server.server_url || '').trim().replace(/\/$/, '');
       if (!base) throw new Error('No URL');

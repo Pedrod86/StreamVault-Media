@@ -64,6 +64,12 @@ Deno.serve(async (req) => {
     if (!token) return Response.json({ error: 'No Trakt access token. Use OAuth pin method to connect.' }, { status: 400 });
     if (!clientId) return Response.json({ error: 'No Trakt client ID. Please reconnect your Trakt account.' }, { status: 400 });
 
+    // ── ping (validate connection) ─────────────────────────────────────────────
+    if (action === 'ping') {
+      const data = await traktFetch('/users/settings', token, clientId);
+      return Response.json({ ok: true, user: data?.user?.username || data?.user?.name || null });
+    }
+
     // ── trending ──────────────────────────────────────────────────────────────
     if (action === 'trending_movies') {
       const data = await traktFetch('/movies/trending?limit=20&extended=full', token, clientId);
