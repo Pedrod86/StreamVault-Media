@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import EmbyVideoPlayer from './EmbyVideoPlayer';
+import EmbySeriesBrowser from './EmbySeriesBrowser';
 
 // Maps Emby items to local DB media IDs by title
 function useLocalMediaMap() {
@@ -32,9 +33,18 @@ function EmbyCard({ item, server, localIdMap }) {
     }
   };
 
+  const isSeries = item.type === 'Series';
+
   return (
     <>
-      {showPlayer && server && (
+      {showPlayer && server && isSeries && (
+        <EmbySeriesBrowser
+          item={{ embyId: item.id, title: item.title, poster_url: item.posterUrl, year: item.year }}
+          server={server}
+          onClose={() => setShowPlayer(false)}
+        />
+      )}
+      {showPlayer && server && !isSeries && (
         <EmbyVideoPlayer
           item={{ id: item.id, title: item.title, posterUrl: item.posterUrl, year: item.year }}
           server={server}
