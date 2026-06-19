@@ -4,6 +4,7 @@ import { Film, Tv2, Baby, Clock, PlayCircle, Sparkles, Loader2, Clapperboard, Mo
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { scanState, runScan } from '@/lib/embyScanState';
+import { loadCounts, saveCounts } from '@/lib/embyCountsCache';
 
 const IS_4K = (m) =>
   !!m && (
@@ -49,14 +50,39 @@ export default function LibraryCategories({ allMedia = [] }) {
     return () => scanState.listeners.delete(listener);
   }, []);
 
-  const embyMovies = embyScan.library.filter(i => i.type === 'Movie').length;
-  const embyShows = embyScan.library.filter(i => i.type === 'Series').length;
-  const emby4kMovies = embyScan.library.filter(i => i.type === 'Movie' && IS_4K(i)).length;
-  const emby4kShows = embyScan.library.filter(i => i.type === 'Series' && IS_4K(i)).length;
-  const embyKids = embyScan.library.filter(i => IS_KIDS(i)).length;
-  const embyAnime = embyScan.library.filter(i => IS_ANIME(i)).length;
-  const embySports = embyScan.library.filter(i => IS_SPORTS(i)).length;
-  const embyLoading = embyScan.loading && embyScan.library.length === 0;
+  // Last-known counts from the previous time this server was used — lets the
+  // boxes fill instantly while a fresh scan runs in the background.
+  const [cachedCounts] = useState(() => loadCounts());
+
+  const hasLive = embyScan.library.length > 0;
+
+  const liveCounts = {
+    movies: embyScan.library.filter(i => i.type === 'Movie').length,
+    shows: embyScan.library.filter(i => i.type === 'Series').length,
+    fourkMovies: embyScan.library.filter(i => i.type === 'Movie' && IS_4K(i)).length,
+    fourkShows: embyScan.library.filter(i => i.type === 'Series' && IS_4K(i)).length,
+    kids: embyScan.library.filter(i => IS_KIDS(i)).length,
+    anime: embyScan.library.filter(i => IS_ANIME(i)).length,
+    sports: embyScan.library.filter(i => IS_SPORTS(i)).length,
+  };
+
+  // Prefer live data; fall back to the cached counts until the scan loads items.
+  const counts = hasLive ? liveCounts : (cachedCounts || liveCounts);
+
+  // Persist live counts so they're available instantly on the next visit.
+  useEffect(() => {
+    if (hasLive) saveCounts(liveCounts);
+  }, [hasLive, liveCounts.movies, liveCounts.shows, liveCounts.fourkMovies, liveCounts.fourkShows, liveCounts.kids, liveCounts.anime, liveCounts.sports]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const embyMovies = counts.movies;
+  const embyShows = counts.shows;
+  const emby4kMovies = counts.fourkMovies;
+  const emby4kShows = counts.fourkShows;
+  const embyKids = counts.kids;
+  const embyAnime = counts.anime;
+  const embySports = counts.sports;
+  // Only show "…" if we have neither live data nor a cached count to display.
+  const embyLoading = embyScan.loading && !hasLive && !cachedCounts;
   const embySyncing = embyScan.loading;
 
   const totalWatchSeconds = history.reduce((acc, h) => acc + (h.progress_seconds || 0), 0);
