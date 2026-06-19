@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     const json = await doFetch(
       `${base}/Users/${userId}/Items/Latest` +
-      `?IncludeItemTypes=Movie,Episode` +
+      `?IncludeItemTypes=Movie,Series` +
       `&Fields=Overview,Genres,CommunityRating,ProductionYear,RunTimeTicks,ImageTags,BackdropImageTags,SeriesName,ParentIndexNumber,IndexNumber` +
       `&Limit=20&api_key=${token}`
     );

@@ -44,7 +44,7 @@ function RecentCard({ item, embyItemId, allMedia, onNavigate }) {
         )}
         <div className="absolute top-2 right-2">
           <Badge className="text-[9px] px-1 py-0 bg-accent/90 text-accent-foreground">
-            {item.type === 'Episode' ? 'EP' : 'Movie'}
+            {item.type === 'Series' ? 'TV' : 'Movie'}
           </Badge>
         </div>
       </div>

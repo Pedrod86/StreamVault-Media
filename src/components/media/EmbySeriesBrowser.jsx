@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, Play, ChevronRight, Loader2, Tv } from 'lucide-react';
 import ExoPlayer from './ExoPlayer';
-import { buildStreamUrl } from '@/lib/embyApi';
 
 export default function EmbySeriesBrowser({ item, server, onClose }) {
   const [seasons, setSeasons] = useState([]);
@@ -43,8 +42,13 @@ export default function EmbySeriesBrowser({ item, server, onClose }) {
   if (playingEpisode) {
     const base = server?.server_url?.replace(/\/$/, '');
     const token = server?.api_token;
-    // Use the same direct-play stream URL movies use, so episodes load identically
-    const src = buildStreamUrl(base, playingEpisode.id, token);
+    // Use an HLS transcode URL so the Android WebView can always decode episodes
+    // (most series are MKV/H.265, which direct-play <video> can't handle in WebView).
+    const id = playingEpisode.id;
+    const src = `${base}/Videos/${id}/master.m3u8?api_key=${token}` +
+      `&MediaSourceId=mediasource_${id}&DeviceId=streamvault-web&PlaySessionId=${Date.now()}` +
+      `&VideoCodec=h264&AudioCodec=aac,mp3&TranscodingContainer=ts&TranscodingProtocol=hls` +
+      `&EnableAdaptiveBitrateStreaming=true`;
     return (
       <ExoPlayer
         src={src}
