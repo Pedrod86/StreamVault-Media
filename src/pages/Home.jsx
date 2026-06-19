@@ -5,25 +5,9 @@ import HeroBanner from '../components/media/HeroBanner';
 import MediaRow from '../components/media/MediaRow';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import LibraryCategories from '../components/dashboard/LibraryCategories';
-import EmbyMediaRows from '../components/media/EmbyMediaRows';
-import EmbyHomeRows from '../components/media/EmbyHomeRows';
+import EmbyLibraryViews from '../components/media/EmbyLibraryViews';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
-import HomeOrderEditor, { loadHomeOrder, saveHomeOrder } from '../components/layout/HomeOrderEditor';
-import GenreRecommendations from '../components/media/GenreRecommendations';
-import TmdbRow from '../components/discover/TmdbRow';
-import TmdbDetailSheet from '../components/discover/TmdbDetailSheet';
-import { tmdb } from '@/lib/metadataService';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LayoutGrid, TrendingUp, Flame } from 'lucide-react';
-
-const IS_ANIME = (m) =>
-  m.tags?.some(t => /^anime$/.test(t)) ||
-  m.genre?.some(g => /^anime$/i.test(g));
-
-const IS_KIDS = (m) =>
-  m.tags?.some(t => /^kids?$/.test(t)) ||
-  m.genre?.some(g => /kids?|children|family/i.test(g)) ||
-  ['TV-Y', 'TV-G', 'G', 'TV-Y7'].includes(m.content_rating);
 
 const TABS = [
   { id: 'All', label: 'All' },
@@ -33,14 +17,6 @@ const TABS = [
 export default function Home() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('All');
-  const [showOrderEditor, setShowOrderEditor] = useState(false);
-  const [homeOrder, setHomeOrder] = useState(() => loadHomeOrder());
-  const [tmdbSelected, setTmdbSelected] = useState(null);
-
-  const handleOrderChange = (updated) => {
-    setHomeOrder(updated);
-    saveHomeOrder(updated);
-  };
 
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['media'] });
@@ -71,37 +47,11 @@ export default function Home() {
   const watchlistMediaIds = new Set(watchlistItems.map(w => w.media_id));
 
   const visibleMedia =
-    activeTab === 'Movies'   ? allMedia.filter(m => m.media_type === 'movie') :
-    activeTab === 'Shows'    ? allMedia.filter(m => m.media_type === 'tv_show') :
-    activeTab === 'Anime'    ? allMedia.filter(IS_ANIME) :
-    activeTab === 'Kids'     ? allMedia.filter(IS_KIDS) :
-    activeTab === 'Watchlist'? allMedia.filter(m => watchlistMediaIds.has(m.id)) :
+    activeTab === 'Watchlist' ? allMedia.filter(m => watchlistMediaIds.has(m.id)) :
     allMedia;
 
   const featured = visibleMedia.filter(m => m.is_featured);
-  const movies = visibleMedia.filter(m => m.media_type === 'movie');
-  const shows = visibleMedia.filter(m => m.media_type === 'tv_show');
-  const animeItems = allMedia.filter(IS_ANIME);
-  const kidsItems = allMedia.filter(IS_KIDS);
   const recentlyAdded = [...visibleMedia].slice(0, 20);
-
-  // Continue watching: media with incomplete watch history
-  const continueWatching = watchHistory
-    .filter(h => !h.completed && h.progress_seconds > 0)
-    .map(h => {
-      const media = allMedia.find(m => m.id === h.media_id);
-      return media ? { media, history: h } : null;
-    })
-    .filter(Boolean);
-
-  // Get unique genres
-  const genreMap = {};
-  visibleMedia.forEach(m => {
-    m.genre?.forEach(g => {
-      if (!genreMap[g]) genreMap[g] = [];
-      genreMap[g].push(m);
-    });
-  });
 
   if (isLoading) {
     return (
@@ -143,13 +93,6 @@ export default function Home() {
             {tab.label}
           </button>
         ))}
-        <button
-          onClick={() => setShowOrderEditor(true)}
-          className="shrink-0 ml-auto p-1.5 rounded-full bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-          title="Arrange home screen"
-        >
-          <LayoutGrid className="w-4 h-4" />
-        </button>
       </div>
 
       <LibraryCategories allMedia={allMedia} />
@@ -159,33 +102,7 @@ export default function Home() {
         {activeTab === 'All' && (
           <>
             <EmbyContinueWatching />
-            <EmbyHomeRows />
-            {homeOrder.filter(s => !s.hidden).map(section => {
-              switch (section.id) {
-                case 'live_tv':       return null;
-                case 'continue_emby': return null;
-                case 'recently_added': return null;
-                case 'emby_rows':     return <EmbyMediaRows key={section.id} />;
-                case 'continue_watching':
-                  return continueWatching.length > 0 ? (
-                    <MediaRow key={section.id} title="Continue Watching" items={continueWatching.map(c => c.media)} watchHistory={watchHistory} showProgress={true} />
-                  ) : null;
-                case 'local_recent':  return null; // handled by EmbyHomeRows (Recently Added Movies / TV Shows)
-                case 'anime':         return animeItems.length > 0 ? <MediaRow key={section.id} title="Anime" items={animeItems} watchHistory={watchHistory} /> : null;
-                case 'kids':          return kidsItems.length > 0 ? <MediaRow key={section.id} title="Kids" items={kidsItems} watchHistory={watchHistory} /> : null;
-                case 'genres':        return null; // handled inside EmbyMediaRows to avoid duplicates
-                case 'recommendations': return (
-                  <GenreRecommendations key={section.id} allMedia={allMedia} watchHistory={watchHistory} />
-                );
-                case 'tmdb_trending': return (
-                  <React.Fragment key={section.id}>
-                    <TmdbRow title="Trending Movies" queryKey={['tmdb_trending_movies']} queryFn={() => tmdb.trending('movie')} icon={TrendingUp} onSelect={setTmdbSelected} />
-                    <TmdbRow title="Trending TV" queryKey={['tmdb_trending_tv']} queryFn={() => tmdb.trending('tv')} icon={Flame} onSelect={setTmdbSelected} />
-                  </React.Fragment>
-                );
-                default: return null;
-              }
-            })}
+            <EmbyLibraryViews />
           </>
         )}
 
@@ -200,14 +117,6 @@ export default function Home() {
         )}
       </div>
     </div>
-      {showOrderEditor && (
-        <HomeOrderEditor
-          sections={homeOrder}
-          onChange={handleOrderChange}
-          onClose={() => setShowOrderEditor(false)}
-        />
-      )}
-      {tmdbSelected && <TmdbDetailSheet item={tmdbSelected} onClose={() => setTmdbSelected(null)} />}
     </PullToRefresh>
   );
 }
