@@ -281,8 +281,9 @@ export default function EmbyLibrary() {
             </h1>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground">
-                {library.length.toLocaleString()} items
-                {scanProgress.total > 0 && !scanProgress.done && ` · scanning ${scanProgress.count} / ${scanProgress.total}`}
+                {library.length.toLocaleString()}
+                {scanProgress.total > 0 ? ` / ${scanProgress.total.toLocaleString()}` : ''} items
+                {scanProgress.total > 0 && !scanProgress.done && ' · syncing'}
               </p>
               {scanProgress.loading && (
                 <span className="flex items-center gap-1 text-[10px] text-accent">
@@ -294,8 +295,15 @@ export default function EmbyLibrary() {
               )}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleRescan} className="gap-1.5 text-xs text-muted-foreground">
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRescan}
+            disabled={scanProgress.loading}
+            className="gap-1.5 text-xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${scanProgress.loading ? 'animate-spin' : ''}`} />
+            {scanProgress.loading ? 'Syncing…' : 'Full Re-sync'}
           </Button>
         </div>
 
