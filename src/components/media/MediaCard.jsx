@@ -25,9 +25,9 @@ export default function MediaCard({ media, showProgress, progress, disableNaviga
   return (
     <Wrapper className="block group">
       <motion.div
-        whileHover={{ scale: 1.03, y: -4 }}
-        transition={{ duration: 0.2 }}
-        className="relative rounded-xl overflow-hidden bg-card border border-border/50 shadow-lg shadow-black/20"
+        whileHover={{ scale: 1.06, y: -6 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="relative rounded-xl overflow-hidden bg-card border border-border/50 shadow-lg shadow-black/20 transition-shadow duration-200 group-hover:shadow-2xl group-hover:shadow-primary/25 group-hover:border-primary/40"
       >
         {/* Poster */}
         <div className="aspect-[2/3] relative overflow-hidden">
@@ -44,10 +44,20 @@ export default function MediaCard({ media, showProgress, progress, disableNaviga
           )}
 
           {/* Hover overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center backdrop-blur-sm">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center backdrop-blur-sm shadow-lg shadow-primary/40">
               <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
             </div>
+          </div>
+
+          {/* Metadata caption — fades in on hover */}
+          <div className="absolute inset-x-0 bottom-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+            <h4 className="font-heading font-semibold text-sm text-white truncate drop-shadow">{media.title}</h4>
+            {(media.year || media.genre?.length > 0) && (
+              <p className="text-[11px] text-white/70 truncate">
+                {[media.year, media.genre?.[0]].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </div>
 
           {/* Rating badge */}
