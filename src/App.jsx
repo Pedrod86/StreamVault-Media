@@ -94,6 +94,7 @@ const AuthenticatedApp = () => {
           <Route path="/add-media" element={<AddMedia />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/history" element={<WatchHistory />} />
+          <Route path="/WatchHistory" element={<WatchHistory />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/tv-guide" element={<TVGuide />} />
           <Route path="/emby" element={<EmbyLibrary />} />
