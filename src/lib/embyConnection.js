@@ -83,6 +83,12 @@ function makeConnection(base, mode, token) {
   return { base, mode, token, fetchJson };
 }
 
+// Read the currently cached route for a server, if any.
+// Returns { base, mode, at } or null.
+export function getCachedRoute(serverId) {
+  return routeCache.get(serverId) || null;
+}
+
 // Clear cached routes so the next request re-probes LAN-first.
 // Call this on network reconnect (e.g. moving between Wi-Fi and cellular).
 export function clearConnectionRoutes() {

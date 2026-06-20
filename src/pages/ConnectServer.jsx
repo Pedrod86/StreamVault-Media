@@ -14,6 +14,7 @@ import ServerHealthBadge from '@/components/server/ServerHealthBadge';
 import XtreamForm, { XTREAM } from '@/components/server/XtreamForm';
 import IptvConnectionTester from '@/components/server/IptvConnectionTester';
 import LocalUrlField from '@/components/server/LocalUrlField';
+import ConnectionRouteBadge from '@/components/server/ConnectionRouteBadge';
 
 const SERVERS = [
   {
@@ -263,6 +264,12 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
             </span>
           ) : (
             <ServerHealthBadge server={srv} />
+          )}
+          {srv.local_url && ['emby', 'jellyfin', 'plex'].includes(srv.server_type) && (
+            <>
+              <span className="text-xs text-muted-foreground">·</span>
+              <ConnectionRouteBadge server={srv} />
+            </>
           )}
           <span className="text-xs text-muted-foreground">·</span>
           <span className="text-xs text-muted-foreground capitalize">
