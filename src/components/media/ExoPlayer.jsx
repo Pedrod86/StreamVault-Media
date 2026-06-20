@@ -124,6 +124,7 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const [tapFlash, setTapFlash] = useState(null);
   const [pip, setPip] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [fatalError, setFatalError] = useState(null);
 
   // Settings panel tabs: 'speed' | 'quality' | 'audio'
   const [settingsTab, setSettingsTab] = useState(null);
@@ -189,6 +190,7 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   // Reset fallback tracking whenever the caller passes a new source
   useEffect(() => {
     triedHlsFallback.current = false;
+    setFatalError(null);
     setActiveSrc(src);
   }, [src]);
 
@@ -267,6 +269,11 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
           const delay = Math.min(1000 * Math.pow(2, recoverCount), 8000);
           recoverCount = Math.min(recoverCount + 1, 4);
           setIsBuffering(true);
+          // After several failed network retries, surface an error instead of a blank screen
+          if (recoverCount >= 4) {
+            setFatalError('This episode could not be streamed. The server may be offline or the format is unsupported.');
+            setIsBuffering(false);
+          }
           setTimeout(() => { try { hls.startLoad(); } catch (_) {} }, delay);
         } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
           try { hls.recoverMediaError(); } catch (_) {}
@@ -579,9 +586,22 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       />
 
       {/* Buffering spinner */}
-      {isBuffering && (
+      {isBuffering && !fatalError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Fatal error screen — replaces the blank black screen */}
+      {fatalError && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 px-6 text-center bg-black/90">
+          <p className="text-white/80 text-sm max-w-sm">{fatalError}</p>
+          <button
+            onClick={() => { saveProgress(false); onClose(); }}
+            className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90"
+          >
+            Close
+          </button>
         </div>
       )}
 
