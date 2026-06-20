@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ChevronDown, Tv2, Subtitles } from 'lucide-react';
 import { PLAYERS } from './PlayerPicker';
 import ExternalPlayerView from './ExternalPlayerView';
+import VideoControlsOverlay from './VideoControlsOverlay';
 
 // ── Emby session reporter ────────────────────────────────────────────────────
 function useEmbyPlaybackReporter({ base, token, itemId, getCurrentTime }) {
@@ -84,6 +85,8 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
   const containerRef = useRef(null);
   const playerInstanceRef = useRef(null);
   const getCurrentTimeRef = useRef(() => 0);
+  const directVideoRef = useRef(null);
+  const [showCustomControls, setShowCustomControls] = useState(false);
 
   const base = server?.server_url?.replace(/\/$/, '') || '';
   const token = server?.api_token || '';
@@ -135,6 +138,8 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
     if (!containerRef.current) return;
     setReady(false);
     setError(null);
+    setShowCustomControls(false);
+    directVideoRef.current = null;
     destroyPlayer();
 
     // Clear container
@@ -157,7 +162,6 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
     const video = document.createElement('video');
     video.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;background:#000;';
     video.setAttribute('playsinline', '');
-    video.setAttribute('controls', '');
     video.autoplay = true;
     video.src = directPlayUrl;
     containerRef.current.appendChild(video);
@@ -166,7 +170,9 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
     video.addEventListener('pause', () => setPlaying(false));
     video.addEventListener('error', () => setError('Direct Play: browser cannot play this format. Try another player.'));
     getCurrentTimeRef.current = () => video.currentTime || 0;
+    directVideoRef.current = video;
     playerInstanceRef.current = { dispose: () => { video.pause(); video.src = ''; } };
+    setShowCustomControls(true);
     setReady(true);
   }
 
@@ -439,6 +445,11 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
         className="w-full h-full relative"
         style={{ background: '#000' }}
       />
+
+      {/* Custom touch controls for Direct Play (pause / rewind / fast-forward) */}
+      {showCustomControls && ready && playerId === 'directplay' && (
+        <VideoControlsOverlay videoRef={directVideoRef} />
+      )}
     </div>
   );
 }
