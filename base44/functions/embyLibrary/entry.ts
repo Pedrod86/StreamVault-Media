@@ -95,6 +95,9 @@ Deno.serve(async (req) => {
     const token = server.api_token;
     const userId = await resolveUserId(base, token);
 
+    // ids: fetch specific items by Emby id (used by the watchlist row)
+    const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
+
     const types = itemType ? itemType : 'Movie,Series';
 
     // sortBy may be "SortName" or "CommunityRating,Descending"
@@ -108,6 +111,7 @@ Deno.serve(async (req) => {
       `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaStreams,Height,Width,Tags` +
       `&SortBy=${sortField}&SortOrder=${sortOrder}&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`;
 
+    if (ids.length) url += `&Ids=${encodeURIComponent(ids.join(','))}`;
     if (searchTerm) url += `&SearchTerm=${encodeURIComponent(searchTerm)}`;
     if (genreFilter) url += `&Genres=${encodeURIComponent(genreFilter)}`;
     if (yearsFilter) url += `&Years=${encodeURIComponent(yearsFilter)}`;

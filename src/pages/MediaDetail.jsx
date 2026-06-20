@@ -34,12 +34,16 @@ export default function MediaDetail() {
   const [selectedSubIndex, setSelectedSubIndex] = useState(-1);
   const [showSubPicker, setShowSubPicker] = useState(false);
 
+  // Key used for Watchlist / WatchHistory. For live Emby items we key on the
+  // Emby item id (prefixed) so saved state survives without a DB record.
+  const historyKey = isEmbyDirect ? `emby:${embyDirectId}` : mediaId;
+
   const saveProgress = useMutation({
     mutationFn: async ({ progressSeconds, totalSeconds, completed }) => {
-      const existing = await base44.entities.WatchHistory.filter({ media_id: mediaId });
+      const existing = await base44.entities.WatchHistory.filter({ media_id: historyKey });
       const entry = existing[0];
       const data = {
-        media_id: mediaId,
+        media_id: historyKey,
         progress_seconds: progressSeconds,
         total_seconds: totalSeconds,
         completed,
@@ -69,7 +73,7 @@ export default function MediaDetail() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const historyEntry = watchHistory.find(h => h.media_id === mediaId && !h.completed && h.progress_seconds > 30);
+  const historyEntry = watchHistory.find(h => h.media_id === historyKey && !h.completed && h.progress_seconds > 30);
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ['watchlist'],
@@ -142,16 +146,16 @@ export default function MediaDetail() {
       .catch(() => {});
   }, [embyItem?.id, embyServer?.id]);
 
-  const isInWatchlist = watchlist.some(w => w.media_id === mediaId);
+  const isInWatchlist = watchlist.some(w => w.media_id === historyKey);
 
   const addToWatchlist = useMutation({
-    mutationFn: () => base44.entities.Watchlist.create({ media_id: mediaId }),
+    mutationFn: () => base44.entities.Watchlist.create({ media_id: historyKey }),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['watchlist'] });
       const prev = queryClient.getQueryData(['watchlist']);
       queryClient.setQueryData(['watchlist'], (old = []) => [
         ...old,
-        { id: '__optimistic__', media_id: mediaId },
+        { id: '__optimistic__', media_id: historyKey },
       ]);
       return { prev };
     },
@@ -163,14 +167,14 @@ export default function MediaDetail() {
 
   const removeFromWatchlist = useMutation({
     mutationFn: async () => {
-      const item = watchlist.find(w => w.media_id === mediaId);
+      const item = watchlist.find(w => w.media_id === historyKey);
       if (item) await base44.entities.Watchlist.delete(item.id);
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['watchlist'] });
       const prev = queryClient.getQueryData(['watchlist']);
       queryClient.setQueryData(['watchlist'], (old = []) =>
-        old.filter(w => w.media_id !== mediaId)
+        old.filter(w => w.media_id !== historyKey)
       );
       return { prev };
     },
@@ -514,7 +518,7 @@ export default function MediaDetail() {
                 <FolderPlus className="w-4 h-4" /> Collections
               </Button>
             </div>
-            <AddToCollectionDialog mediaId={mediaId} open={showCollections} onOpenChange={setShowCollections} />
+            <AddToCollectionDialog mediaId={historyKey} open={showCollections} onOpenChange={setShowCollections} />
 
             {/* IMDb Panel */}
             <ImdbPanel media={activeMedia} />

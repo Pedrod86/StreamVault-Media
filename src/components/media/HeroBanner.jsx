@@ -20,6 +20,16 @@ export default function HeroBanner({ featured }) {
   const media = featured[current] ?? featured[0];
   if (!media) return null;
 
+  // For live Emby items, pass title/poster/type so the detail page renders
+  // without a DB record.
+  const detailUrl = String(media.id).startsWith('emby:')
+    ? `/media/${media.id}?${new URLSearchParams({
+        type: media.media_type === 'tv_show' ? 'Series' : 'Movie',
+        title: media.title || '',
+        ...(media.poster_url ? { poster: media.poster_url } : {}),
+      }).toString()}`
+    : `/media/${media.id}`;
+
   return (
     <div className="relative h-[65vh] sm:h-[70vh] lg:h-[80vh] overflow-hidden">
       <AnimatePresence mode="wait">
@@ -102,13 +112,13 @@ export default function HeroBanner({ featured }) {
             </p>
 
             <div className="flex items-center gap-3">
-              <Link to={`/media/${media.id}`}>
+              <Link to={detailUrl}>
                 <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-11 px-6 rounded-xl font-semibold">
                   <Play className="w-4 h-4 fill-current" />
                   Play Now
                 </Button>
               </Link>
-              <Link to={`/media/${media.id}`}>
+              <Link to={detailUrl}>
                 <Button variant="outline" className="border-foreground/20 text-foreground hover:bg-foreground/10 gap-2 h-11 px-6 rounded-xl font-semibold">
                   <Info className="w-4 h-4" />
                   Details

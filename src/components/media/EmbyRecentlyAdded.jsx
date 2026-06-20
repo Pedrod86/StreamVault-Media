@@ -6,14 +6,15 @@ import { Play, Star, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function RecentCard({ item, embyItemId, allMedia, onNavigate }) {
+function RecentCard({ item, onNavigate }) {
   const handleClick = () => {
-    // Try to find matching media in the library by title
-    const match = allMedia?.find(m => m.title?.toLowerCase().trim() === item.title?.toLowerCase().trim());
-    if (match) {
-      onNavigate(`/media/${match.id}`);
-    }
-    // If no match, do nothing — item isn't in local library yet
+    // Navigate straight to the live Emby item — no DB lookup needed.
+    const params = new URLSearchParams({
+      type: item.type || 'Movie',
+      title: item.title || '',
+      ...(item.posterUrl ? { poster: item.posterUrl } : {}),
+    });
+    onNavigate(`/media/emby:${item.id}?${params.toString()}`);
   };
 
   return (
@@ -73,12 +74,6 @@ export default function EmbyRecentlyAdded() {
     retry: false,
   });
 
-  const { data: allMedia = [] } = useQuery({
-    queryKey: ['media'],
-    queryFn: () => base44.entities.Media.list('-created_date', 500),
-    staleTime: 5 * 60 * 1000,
-  });
-
   const items = data?.items || [];
 
   if (error || (!isLoading && items.length === 0)) return null;
@@ -102,7 +97,7 @@ export default function EmbyRecentlyAdded() {
       ) : (
         <div className="flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2" style={{ scrollbarWidth: 'none' }}>
           {items.map(item => (
-            <RecentCard key={item.id} item={item} allMedia={allMedia} onNavigate={navigate} />
+            <RecentCard key={item.id} item={item} onNavigate={navigate} />
           ))}
         </div>
       )}

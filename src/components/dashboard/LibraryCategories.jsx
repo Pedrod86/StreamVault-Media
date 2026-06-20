@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { scanState, runScan } from '@/lib/embyScanState';
 import { loadCounts, saveCounts } from '@/lib/embyCountsCache';
-import QuickSyncButton from '@/components/dashboard/QuickSyncButton';
+
 
 const IS_4K = (m) =>
   !!m && (
@@ -228,7 +228,6 @@ export default function LibraryCategories({ allMedia = [] }) {
           Library
         </h2>
         <div className="flex items-center gap-2 ml-auto">
-        <QuickSyncButton />
         {embySyncing && (
           <span className="flex items-center gap-1 text-[10px] text-accent">
             <Loader2 className="w-3 h-3 animate-spin" />

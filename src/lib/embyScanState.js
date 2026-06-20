@@ -133,27 +133,6 @@ async function fetchPage() {
     if (items?.length) {
       scanState.library = [...scanState.library, ...items];
       scanState.startIndex += items.length;
-
-      // Buffer items for auto-flush to DB
-      const dbItems = items.map(item => {
-        const tags = ['emby', `emby:${item.id}`];
-        if (item.is4k) tags.push('4k');
-        return {
-          emby_id: item.id,
-          title: item.title,
-          media_type: item.type === 'Series' ? 'tv_show' : 'movie',
-          description: item.overview || '',
-          year: item.year || undefined,
-          rating: item.rating || undefined,
-          duration_minutes: item.duration || undefined,
-          poster_url: item.posterUrl || undefined,
-          backdrop_url: item.backdropUrl || undefined,
-          video_url: item.streamUrl || undefined,
-          genre: item.genres || [],
-          tags,
-        };
-      });
-      scanState._pendingDbItems = [...scanState._pendingDbItems, ...dbItems];
     }
 
     scanState.done = !hasMore || !items?.length;
@@ -164,14 +143,6 @@ async function fetchPage() {
     saveCache(scanState);
     saveProgress(scanState.startIndex, scanState.total, scanState.server);
     notifyListeners();
-
-    // Auto-flush to DB once we have 58+ items buffered, or when scan is done
-    const shouldFlush = scanState._pendingDbItems.length >= DB_FLUSH_THRESHOLD || (scanState.done && scanState._pendingDbItems.length > 0);
-    if (shouldFlush && scanState.server) {
-      const toFlush = [...scanState._pendingDbItems];
-      scanState._pendingDbItems = [];
-      base44.functions.invoke('embySync', { server: scanState.server, items: toFlush }).catch(() => {});
-    }
 
     // Clear progress when scan is fully complete — next run starts fresh
     if (scanState.done) {
