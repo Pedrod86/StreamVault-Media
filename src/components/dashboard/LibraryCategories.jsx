@@ -57,6 +57,19 @@ export default function LibraryCategories({ allMedia = [] }) {
     staleTime: 10 * 60 * 1000,
   });
 
+  // True live totals straight from Emby (TotalRecordCount) — accurate even
+  // though the background scan has only paged through part of the library.
+  const { data: liveTotals = null } = useQuery({
+    queryKey: ['embyCategoryCounts'],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('embyCategoryCounts', {});
+      if (res.data?.error) throw new Error(res.data.error);
+      return res.data;
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
+
   // Subscribe to the shared Emby scan state (no extra API calls)
   const [embyScan, setEmbyScan] = useState({ ...scanState });
   useEffect(() => {
@@ -91,15 +104,17 @@ export default function LibraryCategories({ allMedia = [] }) {
     if (hasLive) saveCounts(liveCounts);
   }, [hasLive, liveCounts.movies, liveCounts.shows, liveCounts.fourkMovies, liveCounts.fourkShows, liveCounts.kids, liveCounts.anime, liveCounts.sports]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const embyMovies = counts.movies;
-  const embyShows = counts.shows;
+  // Prefer the real Emby totals; fall back to scanned counts when unavailable.
+  const embyMovies = liveTotals?.movies ?? counts.movies;
+  const embyShows = liveTotals?.shows ?? counts.shows;
+  const embyKids = liveTotals?.kids ?? counts.kids;
+  const embyAnime = liveTotals?.anime ?? counts.anime;
+  const embySports = liveTotals?.sports ?? counts.sports;
+  // 4K isn't tagged on the server, so detect it by resolution during the scan.
   const emby4kMovies = counts.fourkMovies;
   const emby4kShows = counts.fourkShows;
-  const embyKids = counts.kids;
-  const embyAnime = counts.anime;
-  const embySports = counts.sports;
-  // Only show "…" if we have neither live data nor a cached count to display.
-  const embyLoading = embyScan.loading && !hasLive && !cachedCounts;
+  // Only show "…" if we have no live totals AND no scanned/cached count.
+  const embyLoading = !liveTotals && embyScan.loading && !hasLive && !cachedCounts;
   const embySyncing = embyScan.loading;
 
   const totalWatchSeconds = history.reduce((acc, h) => acc + (h.progress_seconds || 0), 0);
