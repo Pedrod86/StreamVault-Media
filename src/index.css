@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -40,8 +40,8 @@
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 18%;
     --sidebar-ring: 41 89% 48%;
-    --font-heading: 'Roboto', sans-serif;
-    --font-body: 'Poppins', sans-serif;
+    --font-heading: 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
   }
 
   /* Dark mode mirrors root exactly — app is always dark */
