@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, Pause, RotateCcw, RotateCw } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX, Maximize, Minimize, PictureInPicture2 } from 'lucide-react';
 
 function fmt(t) {
   if (!t || isNaN(t)) return '0:00';
@@ -12,13 +12,17 @@ function fmt(t) {
 }
 
 // Custom touch-friendly control bar that drives a given <video> element.
-// Provides rewind 10s, play/pause, forward 10s, and a draggable seek bar.
+// Provides rewind 10s, play/pause, forward 10s, a draggable seek bar, plus
+// mute, picture-in-picture and fullscreen toggles.
 // Tap anywhere to toggle visibility; auto-hides after 3s while playing.
 export default function VideoControlsOverlay({ videoRef }) {
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [visible, setVisible] = useState(true);
+  const [muted, setMuted] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [pip, setPip] = useState(false);
   const hideTimer = useRef(null);
 
   const show = useCallback(() => {
@@ -36,12 +40,19 @@ export default function VideoControlsOverlay({ videoRef }) {
     const onPause = () => { setPlaying(false); setVisible(true); clearTimeout(hideTimer.current); };
     const onTime = () => setCurrent(v.currentTime || 0);
     const onMeta = () => setDuration(v.duration || 0);
+    const onVol = () => setMuted(v.muted);
+    const onEnterPip = () => setPip(true);
+    const onLeavePip = () => setPip(false);
 
     v.addEventListener('play', onPlay);
     v.addEventListener('pause', onPause);
     v.addEventListener('timeupdate', onTime);
     v.addEventListener('loadedmetadata', onMeta);
+    v.addEventListener('volumechange', onVol);
+    v.addEventListener('enterpictureinpicture', onEnterPip);
+    v.addEventListener('leavepictureinpicture', onLeavePip);
     if (v.duration) setDuration(v.duration);
+    setMuted(v.muted);
     show();
 
     return () => {
@@ -49,9 +60,19 @@ export default function VideoControlsOverlay({ videoRef }) {
       v.removeEventListener('pause', onPause);
       v.removeEventListener('timeupdate', onTime);
       v.removeEventListener('loadedmetadata', onMeta);
+      v.removeEventListener('volumechange', onVol);
+      v.removeEventListener('enterpictureinpicture', onEnterPip);
+      v.removeEventListener('leavepictureinpicture', onLeavePip);
       clearTimeout(hideTimer.current);
     };
   }, [videoRef, show]);
+
+  // Track fullscreen state of the document
+  useEffect(() => {
+    const fn = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', fn);
+    return () => document.removeEventListener('fullscreenchange', fn);
+  }, []);
 
   const togglePlay = () => {
     const v = videoRef.current;
@@ -68,6 +89,31 @@ export default function VideoControlsOverlay({ videoRef }) {
     const v = videoRef.current;
     if (!v || !v.duration) return;
     v.currentTime = (parseFloat(e.target.value) / 100) * v.duration;
+    show();
+  };
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+    show();
+  };
+  const togglePip = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else await v.requestPictureInPicture?.();
+    } catch (_) {}
+    show();
+  };
+  const toggleFullscreen = () => {
+    const v = videoRef.current;
+    const target = v?.parentElement || v;
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else target?.requestFullscreen?.();
+    } catch (_) {}
     show();
   };
 
@@ -106,7 +152,7 @@ export default function VideoControlsOverlay({ videoRef }) {
             <span className="text-white/80 text-xs tabular-nums w-12">{fmt(duration)}</span>
           </div>
 
-          {/* Buttons */}
+          {/* Main playback buttons */}
           <div className="flex items-center justify-center gap-8">
             <button
               onClick={() => seek(-10)}
@@ -129,6 +175,33 @@ export default function VideoControlsOverlay({ videoRef }) {
             >
               <RotateCw className="w-8 h-8" />
               <span className="text-[10px] font-semibold">10</span>
+            </button>
+          </div>
+
+          {/* Secondary controls: mute / PiP / fullscreen */}
+          <div className="flex items-center justify-end gap-1 mt-3">
+            <button
+              onClick={toggleMute}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/15 active:bg-white/25 transition-colors"
+              aria-label="Mute"
+            >
+              {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            {typeof document !== 'undefined' && document.pictureInPictureEnabled && (
+              <button
+                onClick={togglePip}
+                className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/15 active:bg-white/25 transition-colors"
+                aria-label="Picture in picture"
+              >
+                <PictureInPicture2 className={`w-5 h-5 ${pip ? 'text-primary' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={toggleFullscreen}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-white hover:bg-white/15 active:bg-white/25 transition-colors"
+              aria-label="Fullscreen"
+            >
+              {fullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
             </button>
           </div>
         </div>
