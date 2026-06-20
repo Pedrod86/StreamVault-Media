@@ -41,29 +41,35 @@ function useServerPing(server) {
       return;
     }
 
-    try {
-      let base = (server.server_url || '').trim().replace(/\/$/, '');
-      if (!base) throw new Error('No URL');
-      if (!/^https?:\/\//i.test(base)) base = 'http://' + base;
+    const token = server.api_token || server.plex_token;
+    const buildUrl = (base) => {
+      if (server.server_type === 'plex') return `${base}/identity?X-Plex-Token=${token}`;
+      if (server.server_type === 'xtream') return `${base}/player_api.php?username=${encodeURIComponent(server.username || '')}&password=${encodeURIComponent(server.password || '')}`;
+      return `${base}/System/Info/Public`;
+    };
+    const normalize = (u) => {
+      let b = (u || '').trim().replace(/\/$/, '');
+      if (b && !/^https?:\/\//i.test(b)) b = 'http://' + b;
+      return b;
+    };
 
-      const token = server.api_token || server.plex_token;
-      let url;
-      if (server.server_type === 'plex') {
-        url = `${base}/identity?X-Plex-Token=${token}`;
-      } else if (server.server_type === 'xtream') {
-        url = `${base}/player_api.php?username=${encodeURIComponent(server.username || '')}&password=${encodeURIComponent(server.password || '')}`;
-      } else {
-        url = `${base}/System/Info/Public`;
+    // LAN-first: try local_url, then fall back to the remote/relay URL
+    const candidates = [server.local_url, server.server_url].map(normalize).filter(Boolean);
+    if (candidates.length === 0) { setStatus('error'); return; }
+
+    for (const base of candidates) {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(buildUrl(base), { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setLatency(Date.now() - t0);
+        setStatus('ok');
+        return;
+      } catch {
+        // try next candidate
       }
-
-      const t0 = Date.now();
-      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setLatency(Date.now() - t0);
-      setStatus('ok');
-    } catch (err) {
-      setStatus('error');
     }
+    setStatus('error');
   };
 
   useEffect(() => { ping(); }, [server.id]);
