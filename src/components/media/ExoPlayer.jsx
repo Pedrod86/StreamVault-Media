@@ -535,10 +535,10 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       else if (x > (2 * w) / 3) { skip(skipSecs); flash('right'); }
       else { togglePlay(); flash('center'); }
     } else {
-      if (playing) {
-        if (showControls) { clearTimeout(hideTimer.current); setShowControls(false); }
-        else resetHideTimer();
-      }
+      // Single tap always toggles control visibility — on mobile this is the only
+      // way to bring the controls back once they've auto-hidden.
+      if (showControls) { clearTimeout(hideTimer.current); setShowControls(false); }
+      else resetHideTimer();
     }
     lastTap.current = now;
   };
