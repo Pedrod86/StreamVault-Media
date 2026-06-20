@@ -8,6 +8,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { useReconnectRefetch } from '@/hooks/useReconnectRefetch';
 
 import Home from './pages/Home';
 import Movies from './pages/Movies';
@@ -40,6 +41,9 @@ import CategoryView from './pages/CategoryView';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+
+  // Auto-refetch stale data when the network reconnects
+  useReconnectRefetch();
 
   // Handle auth_required in an effect to avoid calling navigate during render
   React.useEffect(() => {
