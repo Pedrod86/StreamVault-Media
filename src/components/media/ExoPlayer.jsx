@@ -123,6 +123,7 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const [seekPreview, setSeekPreview] = useState(null);
   const [tapFlash, setTapFlash] = useState(null);
   const [pip, setPip] = useState(false);
+  const [pipError, setPipError] = useState(null);
   const [isBuffering, setIsBuffering] = useState(false);
   const [fatalError, setFatalError] = useState(null);
 
@@ -422,8 +423,24 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const togglePip = async () => {
     const v = videoRef.current;
     if (!v) return;
-    if (pip) await document.exitPictureInPicture?.();
-    else await v.requestPictureInPicture?.();
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (typeof v.requestPictureInPicture === 'function') {
+        await v.requestPictureInPicture();
+      } else if (typeof v.webkitSetPresentationMode === 'function') {
+        // iOS Safari fallback
+        v.webkitSetPresentationMode(
+          v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture'
+        );
+      } else {
+        setPipError("Picture-in-Picture isn't supported on this device.");
+        setTimeout(() => setPipError(null), 2500);
+      }
+    } catch (err) {
+      setPipError(err?.message || "Couldn't start Picture-in-Picture.");
+      setTimeout(() => setPipError(null), 2500);
+    }
   };
 
   const setPlaybackSpeed = (s) => {
@@ -596,6 +613,13 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
       >
         {playing ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
       </button>
+
+      {/* PiP error toast */}
+      {pipError && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-black/90 text-white text-xs px-4 py-2 rounded-lg border border-white/15 shadow-xl pointer-events-none">
+          {pipError}
+        </div>
+      )}
 
       {/* Buffering spinner */}
       {isBuffering && !fatalError && (
