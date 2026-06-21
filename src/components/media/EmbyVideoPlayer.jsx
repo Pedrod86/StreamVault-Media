@@ -258,7 +258,6 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
       const video = document.createElement('video');
       video.style.cssText = 'width:100%;height:100%;position:absolute;inset:0;';
       video.setAttribute('playsinline', '');
-      video.controls = true;
       containerRef.current.appendChild(video);
 
       window.shaka.polyfill.installAll();
@@ -276,7 +275,9 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
       video.addEventListener('play', () => setPlaying(true));
       video.addEventListener('pause', () => setPlaying(false));
       getCurrentTimeRef.current = () => video.currentTime || 0;
+      directVideoRef.current = video;
       playerInstanceRef.current = player;
+      setShowCustomControls(true);
       setReady(true);
     } catch (e) {
       setError('Failed to load Shaka Player: ' + e.message);
@@ -294,6 +295,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
       video.setAttribute('playsinline', '');
       video.src = hlsUrl;
       containerRef.current.appendChild(video);
+      directVideoRef.current = video;
 
       const player = new window.MediaElementPlayer(video, {
         stretching: 'fill',
@@ -302,6 +304,7 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
           mediaElement.addEventListener('play', () => setPlaying(true));
           mediaElement.addEventListener('pause', () => setPlaying(false));
           getCurrentTimeRef.current = () => mediaElement.currentTime || 0;
+          setShowCustomControls(true);
           mediaElement.play();
         },
         error: () => setError('MediaElement.js: stream failed to load'),
@@ -446,8 +449,8 @@ export default function EmbyVideoPlayer({ item, server, onClose, initialPlayerId
         style={{ background: '#000' }}
       />
 
-      {/* Custom touch controls for Direct Play (pause / rewind / fast-forward) */}
-      {showCustomControls && ready && playerId === 'directplay' && (
+      {/* Custom touch controls (pause / rewind / fast-forward / PiP) for players that mount a plain <video> */}
+      {showCustomControls && ready && ['directplay', 'shaka', 'mediaelement'].includes(playerId) && (
         <VideoControlsOverlay videoRef={directVideoRef} />
       )}
     </div>
