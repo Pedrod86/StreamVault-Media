@@ -85,10 +85,7 @@ export default function Login() {
         <div style={{ width: '100%', maxWidth: 460, padding: '28px' }}
           className="bg-card rounded-2xl border border-border shadow-2xl mx-auto my-auto">
           <div className="text-center mb-5">
-            <div className="flex justify-center mb-2">
-              <StreamVaultLogo size="md" />
-            </div>
-            <h1 className="font-heading font-bold text-2xl text-foreground mt-1">Sign In</h1>
+            <h1 className="font-heading font-bold text-2xl text-foreground">Sign In</h1>
             <p className="text-muted-foreground text-sm mt-1">Use your remote to navigate</p>
           </div>
 
