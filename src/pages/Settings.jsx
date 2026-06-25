@@ -432,6 +432,9 @@ export default function Settings() {
   const [syncInterval, setSyncInterval] = useState('0');
   const [savedTheme, setSavedTheme] = useState(false);
   const [savedSync, setSavedSync] = useState(false);
+  // Init guard — load the saved interval from the DB only once, so a background
+  // refetch (e.g. when returning to this page) can't overwrite the user's choice.
+  const syncLoadedRef = useRef(false);
 
   // Server sync states
   const [serverStatuses, setServerStatuses] = useState({});
@@ -453,7 +456,12 @@ export default function Settings() {
       const t = THEMES[themeIdx];
       applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg);
     }
-    setSyncInterval(String(settings.sync_interval_minutes ?? 0));
+    // Only seed the interval from the DB the first time settings load,
+    // so refetches after navigating back don't reset the dropdown to "Disabled".
+    if (!syncLoadedRef.current) {
+      setSyncInterval(String(settings.sync_interval_minutes ?? 0));
+      syncLoadedRef.current = true;
+    }
   }, [settings]);
 
   // Apply theme on selection change
