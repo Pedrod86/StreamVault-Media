@@ -169,6 +169,70 @@ button:focus-visible,
   box-shadow: 0 0 6px hsl(300 100% 55%);
 }
 
+/* ── Glass Dark theme ── */
+/* Deep, slightly-blue backdrop with soft radial glows so blur has something to frost. */
+.theme-glass body {
+  background-image:
+    radial-gradient(1200px 600px at 15% -10%, hsl(199 90% 62% / 0.12), transparent 60%),
+    radial-gradient(1000px 500px at 110% 10%, hsl(265 80% 60% / 0.10), transparent 60%),
+    radial-gradient(900px 700px at 50% 120%, hsl(210 80% 55% / 0.10), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Frosted glass surfaces — translucent fills + backdrop blur + subtle top highlight. */
+.theme-glass .bg-card,
+.theme-glass .bg-popover,
+.theme-glass .bg-secondary,
+.theme-glass .bg-muted,
+.theme-glass [class*="bg-card"],
+.theme-glass [class*="bg-secondary"] {
+  background-color: hsl(220 40% 14% / 0.45) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-color: hsl(0 0% 100% / 0.10) !important;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.08), 0 8px 32px hsl(220 60% 3% / 0.4);
+}
+
+/* Glass-effect writing — translucent, frosted, softly glowing text. */
+.theme-glass body,
+.theme-glass p,
+.theme-glass span,
+.theme-glass a,
+.theme-glass li,
+.theme-glass label,
+.theme-glass div {
+  color: hsl(0 0% 100% / 0.82);
+  text-shadow: 0 1px 8px hsl(199 90% 62% / 0.18), 0 0 1px hsl(0 0% 100% / 0.35);
+}
+
+/* Headings get a brighter, glassier sheen. */
+.theme-glass h1,
+.theme-glass h2,
+.theme-glass h3,
+.theme-glass h4,
+.theme-glass h5,
+.theme-glass h6 {
+  color: hsl(0 0% 100% / 0.95);
+  text-shadow: 0 2px 14px hsl(199 90% 62% / 0.30), 0 0 2px hsl(0 0% 100% / 0.5);
+  letter-spacing: 0.01em;
+}
+
+/* Keep coloured/utility text (badges, primary buttons, accents) intact. */
+.theme-glass .text-primary,
+.theme-glass .text-primary-foreground,
+.theme-glass .text-accent,
+.theme-glass .text-destructive,
+.theme-glass [class*="text-blue-"],
+.theme-glass [class*="text-green-"],
+.theme-glass [class*="text-yellow-"],
+.theme-glass [class*="text-red-"],
+.theme-glass [class*="text-purple-"],
+.theme-glass [class*="text-pink-"],
+.theme-glass [class*="text-orange-"],
+.theme-glass [class*="text-rose-"] {
+  text-shadow: 0 0 10px currentColor;
+}
+
 /* Login logo flash-once then settle */
 @keyframes logo-flash {
   0%   { opacity: 0; transform: scale(1.4); filter: brightness(2.5); }

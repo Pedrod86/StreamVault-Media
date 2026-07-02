@@ -16,15 +16,19 @@ export const THEMES = [
   { label: '🪨 Slate Mono',     primary: '210 20% 75%',  accent: '210 16% 60%',  preview: ['#b0bac5', '#8a96a3'], bg: { h: 215, s: 16 } },
   { label: '⬛ OLED Black',     primary: '210 40% 96%',  accent: '199 89% 55%',  preview: ['#f0f4f8', '#22b8e6'], bg: { h: 0, s: 0, oled: true } },
   { label: '🎬 Plex',          primary: '41 89% 48%',   accent: '38 95% 60%',   preview: ['#e5a00d', '#f5b942'], bg: { h: 0, s: 0 } },
+  { label: '🧊 Glass Dark',    primary: '199 90% 62%',  accent: '210 80% 70%',  preview: ['#38bdf8', '#7dd3fc'], bg: { h: 220, s: 30 }, glass: true },
 ];
 
-export function applyTheme(primary, accent, cyberpunk = false, bg = null) {
+export function applyTheme(primary, accent, cyberpunk = false, bg = null, glass = false) {
   const root = document.documentElement;
   root.style.setProperty('--primary', primary);
   root.style.setProperty('--ring', primary);
   root.style.setProperty('--chart-1', primary);
   root.style.setProperty('--accent', accent);
   root.style.setProperty('--chart-2', accent);
+
+  // Glass mode toggle — frosted surfaces + glass-effect text (styled in index.css).
+  root.classList.toggle('theme-glass', !!glass);
 
   if (cyberpunk) {
     root.classList.add('theme-cyberpunk');
@@ -82,7 +86,7 @@ export function applySavedTheme(settings) {
   const t = (settings.theme_label && THEMES.find(t => t.label === settings.theme_label))
     || (settings.accent_color && THEMES.find(t => t.primary === settings.accent_color));
   if (t) {
-    applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg);
+    applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg, !!t.glass);
   } else {
     // Custom/legacy values not in the preset list — apply accents only.
     const root = document.documentElement;

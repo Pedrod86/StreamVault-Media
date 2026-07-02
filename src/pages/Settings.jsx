@@ -454,7 +454,7 @@ export default function Settings() {
     if (themeIdx >= 0) {
       setSelectedTheme(themeIdx);
       const t = THEMES[themeIdx];
-      applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg);
+      applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg, !!t.glass);
     }
     // Only seed the interval from the DB the first time settings load,
     // so refetches after navigating back don't reset the dropdown to "Disabled".
@@ -467,7 +467,7 @@ export default function Settings() {
   // Apply theme on selection change
   useEffect(() => {
     const t = THEMES[selectedTheme];
-    applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg);
+    applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg, !!t.glass);
   }, [selectedTheme]);
 
   const saveSettings = async (patch, onDone) => {
