@@ -35,6 +35,12 @@ export default function Login() {
       }
     } catch (err) {
       const status = err?.status || err?.response?.status;
+      if (isTV) {
+        base44.analytics.track({
+          eventName: 'tv_login_failed',
+          properties: { status: status || 0, reason: status === 401 || status === 403 ? 'invalid_credentials' : status === 429 ? 'rate_limited' : status >= 500 ? 'server_error' : !status ? 'network_error' : 'other' },
+        });
+      }
       if (status === 401 || status === 403) {
         setError('Incorrect email or password. Please try again.');
       } else if (status === 429) {
