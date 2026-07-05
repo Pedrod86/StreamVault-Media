@@ -11,6 +11,7 @@ import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
 import JellyfinRecentlyAdded from '../components/media/JellyfinRecentlyAdded';
 import JellyfinContinueWatching from '../components/media/JellyfinContinueWatching';
 import JellyfinLibraryViews from '../components/media/JellyfinLibraryViews';
+import PlexLibraryViews from '../components/media/PlexLibraryViews';
 import EmbyWatchlistRow from '../components/media/EmbyWatchlistRow';
 import KidsTvRow from '../components/media/KidsTvRow';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,6 +30,7 @@ export default function Home() {
     await queryClient.invalidateQueries({ queryKey: ['jellyfinRecentlyAdded'] });
     await queryClient.invalidateQueries({ queryKey: ['jellyfinContinueWatching'] });
     await queryClient.invalidateQueries({ queryKey: ['jellyfinViews'] });
+    await queryClient.invalidateQueries({ queryKey: ['plexViews'] });
     await queryClient.invalidateQueries({ queryKey: ['watchlist'] });
     await queryClient.invalidateQueries({ queryKey: ['mediaServers'] });
   };
@@ -119,9 +121,7 @@ export default function Home() {
 
             {hasPlex && (
               <ServerSection name="Plex" accentClass="text-yellow-500">
-                <p className="px-4 sm:px-6 text-sm text-muted-foreground">
-                  Plex browsing is coming soon.
-                </p>
+                <PlexLibraryViews />
               </ServerSection>
             )}
           </>
