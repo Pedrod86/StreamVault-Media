@@ -7,6 +7,7 @@ import LibraryCategories from '../components/dashboard/LibraryCategories';
 import EmbyLibraryViews from '../components/media/EmbyLibraryViews';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
+import JellyfinRecentlyAdded from '../components/media/JellyfinRecentlyAdded';
 import EmbyWatchlistRow from '../components/media/EmbyWatchlistRow';
 import KidsTvRow from '../components/media/KidsTvRow';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +23,7 @@ export default function Home() {
 
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['embyRecentlyAdded'] });
+    await queryClient.invalidateQueries({ queryKey: ['jellyfinRecentlyAdded'] });
     await queryClient.invalidateQueries({ queryKey: ['watchlist'] });
     await queryClient.invalidateQueries({ queryKey: ['mediaServers'] });
   };
@@ -85,6 +87,7 @@ export default function Home() {
           <>
             <EmbyContinueWatching />
             <EmbyRecentlyAdded />
+            <JellyfinRecentlyAdded />
             <KidsTvRow />
             <EmbyLibraryViews />
           </>

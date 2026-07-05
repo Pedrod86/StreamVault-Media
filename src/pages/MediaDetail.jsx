@@ -23,8 +23,10 @@ export default function MediaDetail() {
   const navigate = useNavigate();
   const rawId = window.location.pathname.split('/media/')[1];
   const isEmbyDirect = rawId?.startsWith('emby:');
+  const isJellyfinDirect = rawId?.startsWith('jellyfin:');
   const embyDirectId = isEmbyDirect ? rawId.slice(5) : null;
-  const mediaId = isEmbyDirect ? null : rawId;
+  const jellyfinDirectId = isJellyfinDirect ? rawId.slice(9) : null;
+  const mediaId = (isEmbyDirect || isJellyfinDirect) ? null : rawId;
   const queryClient = useQueryClient();
   const [showPlayer, setShowPlayer] = useState(false);
   const [playerSource, setPlayerSource] = useState('emby'); // 'emby' | 'iptv'
@@ -66,7 +68,7 @@ export default function MediaDetail() {
       const items = await base44.entities.Media.filter({ id: mediaId });
       return items[0];
     },
-    enabled: !!mediaId && !isEmbyDirect,
+    enabled: !!mediaId && !isEmbyDirect && !isJellyfinDirect,
   });
 
   const { data: watchHistory = [] } = useQuery({
@@ -102,7 +104,8 @@ export default function MediaDetail() {
     const tagId = (item.tags || []).find(t => t?.startsWith('jellyfin:') && t !== 'jellyfin')?.replace('jellyfin:', '');
     return item.jellyfin_id || tagId || null;
   };
-  const jellyfinId = getJellyfinIdFromMedia(media);
+  // For jellyfin-direct links the id comes straight from the URL; otherwise from the saved record.
+  const jellyfinId = jellyfinDirectId || getJellyfinIdFromMedia(media);
   // A title is playable on Jellyfin when we have both a Jellyfin server and its item id.
   const hasJellyfin = !!(jellyfinServer && jellyfinId);
 
@@ -199,7 +202,9 @@ export default function MediaDetail() {
   const resolveSource = (chosen) => {
     if (chosen === 'jellyfin' && hasJellyfin) return 'jellyfin';
     if (chosen === 'emby' && embyItem) return 'emby';
-    return embyItem ? 'emby' : 'iptv';
+    if (embyItem) return 'emby';
+    if (hasJellyfin) return 'jellyfin';
+    return 'iptv';
   };
 
   const handlePlay = (chosen) => {
@@ -241,6 +246,15 @@ export default function MediaDetail() {
         description: embyItem.overview || '',
         video_url: embyItem.streamUrl,
       } : null)
+    : isJellyfinDirect
+    ? {
+        id: null,
+        title: directTitle,
+        media_type: directType === 'Series' ? 'tv_show' : 'movie',
+        poster_url: directPoster,
+        genre: [],
+        description: '',
+      }
     : media;
 
   if (isLoading || !activeMedia) {
@@ -306,6 +320,15 @@ export default function MediaDetail() {
                 startAt={startAt}
                 onClose={() => setShowPlayer(false)}
                 onProgress={(p) => saveProgress.mutate(p)}
+              />
+            );
+          }
+          if (playerSource === 'jellyfin' && hasJellyfin && jellyfinServer && activeMedia.media_type === 'tv_show') {
+            return (
+              <EmbySeriesBrowser
+                item={{ id: jellyfinId, title: activeMedia.title, type: 'Series', poster_url: activeMedia.poster_url, year: activeMedia.year }}
+                server={jellyfinServer}
+                onClose={() => setShowPlayer(false)}
               />
             );
           }
@@ -522,7 +545,7 @@ export default function MediaDetail() {
               )}
               <PlaySourcePicker
                 hasEmby={!!embyItem}
-                hasJellyfin={hasJellyfin && activeMedia.media_type !== 'tv_show'}
+                hasJellyfin={hasJellyfin && (activeMedia.media_type !== 'tv_show' || isJellyfinDirect)}
                 label={historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem || hasJellyfin ? 'Play' : iptvVod ? 'Play with IPTV' : 'Play')}
                 onPlay={(chosen) => { setPlayerSource(resolveSource(chosen)); setStartAt(0); setShowPlayer(true); }}
               />
