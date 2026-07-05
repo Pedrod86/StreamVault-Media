@@ -140,6 +140,7 @@ function mapJellyfinItem(item, base, token) {
   const backdropUrl = item.BackdropImageTags?.[0] ? `${base}/Items/${item.Id}/Images/Backdrop/0?api_key=${token}` : undefined;
   const videoUrl = item.Type === 'Movie' ? `${base}/Videos/${item.Id}/stream?api_key=${token}&Static=true` : undefined;
   return {
+    jellyfin_id: item.Id,
     title: item.Name,
     media_type: item.Type === 'Series' ? 'tv_show' : 'movie',
     description: item.Overview || '',
@@ -155,7 +156,7 @@ function mapJellyfinItem(item, base, token) {
     studio: item.Studios?.[0]?.Name,
     content_rating: item.OfficialRating || undefined,
     season_count: item.ChildCount || undefined,
-    tags: autoTags(item.Genres || [], item.OfficialRating || ''),
+    tags: autoTags(item.Genres || [], item.OfficialRating || '', ['jellyfin', `jellyfin:${item.Id}`]),
   };
 }
 

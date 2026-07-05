@@ -47,7 +47,19 @@
     },
     "video_url": {
       "type": "string",
-      "description": "URL to video file"
+      "description": "URL to video file (primary / Emby stream)"
+    },
+    "jellyfin_url": {
+      "type": "string",
+      "description": "Jellyfin direct stream URL, when this title is also available on Jellyfin"
+    },
+    "emby_id": {
+      "type": "string",
+      "description": "Emby item id for direct playback"
+    },
+    "jellyfin_id": {
+      "type": "string",
+      "description": "Jellyfin item id for direct playback"
     },
     "cast": {
       "type": "array",

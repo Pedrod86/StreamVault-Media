@@ -78,14 +78,16 @@ export default function ConnectServer() {
     onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['mediaServers'] });
       setSaved(true);
-      // Auto-sync library for media servers (not Trakt) — errors are not silenced
+      // Auto-sync library for media servers (not Trakt) — errors are not silenced.
+      // Route through embySync so items dedup against the existing catalogue and
+      // Jellyfin titles merge into existing (Emby) records instead of duplicating.
       if (created.server_type !== 'trakt') {
         import('@/lib/serverSync').then(({ fetchServerLibrary }) => {
           fetchServerLibrary(created).then(async (items) => {
             if (!items.length) return;
-            const BATCH = 50;
+            const BATCH = 200;
             for (let i = 0; i < items.length; i += BATCH) {
-              await base44.entities.Media.bulkCreate(items.slice(i, i + BATCH));
+              await base44.functions.invoke('embySync', { server: created, items: items.slice(i, i + BATCH) });
             }
             queryClient.invalidateQueries({ queryKey: ['media'] });
           }).catch((err) => { console.error('[StreamVault] Auto-sync failed:', err?.message || err); });

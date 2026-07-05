@@ -15,6 +15,7 @@ import WatchProgressControls from '@/components/media/WatchProgressControls';
 import TvdbPanel from '../components/media/TvdbPanel';
 import ImdbPanel from '../components/media/ImdbPanel';
 import TmdbCastInfo from '../components/media/TmdbCastInfo';
+import PlaySourcePicker from '../components/media/PlaySourcePicker';
 import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
 
 export default function MediaDetail() {
@@ -93,7 +94,17 @@ export default function MediaDetail() {
     staleTime: 60 * 1000,
   });
   const embyServer = servers.find(s => s.server_type === 'emby' && s.is_active !== false);
+  const jellyfinServer = servers.find(s => s.server_type === 'jellyfin' && s.is_active !== false);
   const xtreamServer = servers.find(s => s.server_type === 'xtream' && s.is_active !== false);
+
+  const getJellyfinIdFromMedia = (item) => {
+    if (!item) return null;
+    const tagId = (item.tags || []).find(t => t?.startsWith('jellyfin:') && t !== 'jellyfin')?.replace('jellyfin:', '');
+    return item.jellyfin_id || tagId || null;
+  };
+  const jellyfinId = getJellyfinIdFromMedia(media);
+  // A title is playable on Jellyfin when we have both a Jellyfin server and its item id.
+  const hasJellyfin = !!(jellyfinServer && jellyfinId);
 
   const getEmbyIdFromMedia = (item) => {
     if (!item) return null;
@@ -185,9 +196,14 @@ export default function MediaDetail() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['watchlist'] }),
   });
 
-  const handlePlay = () => {
-    // Always prefer Emby; fall back to IPTV then direct URL
-    setPlayerSource(embyItem ? 'emby' : 'iptv');
+  const resolveSource = (chosen) => {
+    if (chosen === 'jellyfin' && hasJellyfin) return 'jellyfin';
+    if (chosen === 'emby' && embyItem) return 'emby';
+    return embyItem ? 'emby' : 'iptv';
+  };
+
+  const handlePlay = (chosen) => {
+    setPlayerSource(resolveSource(chosen));
     if (historyEntry?.progress_seconds > 30) {
       setResumePrompt(true);
     } else {
@@ -286,6 +302,17 @@ export default function MediaDetail() {
             return (
               <PlayerComponent
                 src={`${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true`}
+                title={activeMedia.title}
+                startAt={startAt}
+                onClose={() => setShowPlayer(false)}
+                onProgress={(p) => saveProgress.mutate(p)}
+              />
+            );
+          }
+          if (playerSource === 'jellyfin' && hasJellyfin && jellyfinServer) {
+            return (
+              <PlayerComponent
+                src={`${jellyfinServer.server_url?.replace(/\/$/, '')}/Videos/${jellyfinId}/stream?api_key=${jellyfinServer.api_token}&Static=true`}
                 title={activeMedia.title}
                 startAt={startAt}
                 onClose={() => setShowPlayer(false)}
@@ -493,13 +520,12 @@ export default function MediaDetail() {
                   Resume {formatTime(historyEntry.progress_seconds)}
                 </Button>
               )}
-              <Button
-                className={`gap-2 h-11 px-6 rounded-xl font-semibold select-none ${historyEntry?.progress_seconds > 30 ? 'bg-secondary hover:bg-secondary/80 text-secondary-foreground' : 'bg-primary hover:bg-primary/90 text-primary-foreground'}`}
-                onClick={() => { setPlayerSource(embyItem ? 'emby' : 'iptv'); setStartAt(0); setShowPlayer(true); }}
-              >
-                <Play className="w-4 h-4 fill-current" />
-                {historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem ? 'Play' : iptvVod ? 'Play with IPTV' : 'Play')}
-              </Button>
+              <PlaySourcePicker
+                hasEmby={!!embyItem}
+                hasJellyfin={hasJellyfin && activeMedia.media_type !== 'tv_show'}
+                label={historyEntry?.progress_seconds > 30 ? 'Start Over' : (embyItem || hasJellyfin ? 'Play' : iptvVod ? 'Play with IPTV' : 'Play')}
+                onPlay={(chosen) => { setPlayerSource(resolveSource(chosen)); setStartAt(0); setShowPlayer(true); }}
+              />
               <Button
                 variant="outline"
                 className="border-border text-foreground hover:bg-secondary gap-2 h-11 px-5 rounded-xl select-none"
