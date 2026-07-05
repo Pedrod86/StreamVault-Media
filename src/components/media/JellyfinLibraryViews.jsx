@@ -63,7 +63,7 @@ function JellyfinRow({ title, items, onPlay }) {
 export default function JellyfinLibraryViews() {
   const navigate = useNavigate();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['jellyfinViews'],
     queryFn: () => base44.functions.invoke('jellyfinViews', {}).then(r => r.data),
     staleTime: 5 * 60 * 1000,
@@ -80,7 +80,11 @@ export default function JellyfinLibraryViews() {
     navigate(`/media/jellyfin:${item.id}?${params.toString()}`);
   };
 
-  if (isLoading) {
+  const views = data?.views;
+
+  // Show skeletons while loading OR while a background refetch is replacing a
+  // stale/empty persisted cache (so restored empty data doesn't hide the rows).
+  if (isLoading || (isFetching && !views?.length)) {
     return (
       <div className="space-y-6">
         {[1, 2, 3].map(i => (
@@ -97,7 +101,6 @@ export default function JellyfinLibraryViews() {
     );
   }
 
-  const views = data?.views;
   if (!views?.length) return null;
 
   return (
