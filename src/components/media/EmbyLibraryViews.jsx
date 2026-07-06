@@ -60,12 +60,12 @@ function EmbyRow({ title, items, onPlay }) {
   );
 }
 
-export default function EmbyLibraryViews() {
+export default function EmbyLibraryViews({ serverId } = {}) {
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['embyViews'],
-    queryFn: () => base44.functions.invoke('embyViews', {}).then(r => r.data),
+    queryKey: ['embyViews', serverId || 'default'],
+    queryFn: () => base44.functions.invoke('embyViews', serverId ? { serverId } : {}).then(r => r.data),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -76,6 +76,7 @@ export default function EmbyLibraryViews() {
     if (item.type) params.set('type', item.type);
     if (item.title) params.set('title', item.title);
     if (item.posterUrl) params.set('poster', item.posterUrl);
+    if (serverId) params.set('server', serverId);
     navigate(`/media/emby:${item.id}?${params.toString()}`);
   };
 

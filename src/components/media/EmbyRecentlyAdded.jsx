@@ -6,13 +6,14 @@ import { Play, Star, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function RecentCard({ item, onNavigate }) {
+function RecentCard({ item, serverId, onNavigate }) {
   const handleClick = () => {
     // Navigate straight to the live Emby item — no DB lookup needed.
     const params = new URLSearchParams({
       type: item.type || 'Movie',
       title: item.title || '',
       ...(item.posterUrl ? { poster: item.posterUrl } : {}),
+      ...(serverId ? { server: serverId } : {}),
     });
     onNavigate(`/media/emby:${item.id}?${params.toString()}`);
   };
@@ -59,13 +60,13 @@ function RecentCard({ item, onNavigate }) {
   );
 }
 
-export default function EmbyRecentlyAdded() {
+export default function EmbyRecentlyAdded({ serverId } = {}) {
   const navigate = useNavigate();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['embyRecentlyAdded'],
+    queryKey: ['embyRecentlyAdded', serverId || 'default'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('embyRecentlyAdded', {});
+      const res = await base44.functions.invoke('embyRecentlyAdded', serverId ? { serverId } : {});
       if (res.data?.error) throw new Error(res.data.error);
       return res.data;
     },
@@ -97,7 +98,7 @@ export default function EmbyRecentlyAdded() {
       ) : (
         <div className="flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2" style={{ scrollbarWidth: 'none' }}>
           {items.map(item => (
-            <RecentCard key={item.id} item={item} onNavigate={navigate} />
+            <RecentCard key={item.id} item={item} serverId={serverId} onNavigate={navigate} />
           ))}
         </div>
       )}

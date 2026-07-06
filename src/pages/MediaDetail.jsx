@@ -97,7 +97,9 @@ export default function MediaDetail() {
     queryFn: () => base44.entities.MediaServer.list(),
     staleTime: 60 * 1000,
   });
-  const embyServer = servers.find(s => s.server_type === 'emby' && s.is_active !== false);
+  const serverParam = urlParams.get('server');
+  const embyServer = (serverParam && servers.find(s => s.id === serverParam && s.server_type === 'emby'))
+    || servers.find(s => s.server_type === 'emby' && s.is_active !== false);
   const jellyfinServer = servers.find(s => s.server_type === 'jellyfin' && s.is_active !== false);
   const xtreamServer = servers.find(s => s.server_type === 'xtream' && s.is_active !== false);
 

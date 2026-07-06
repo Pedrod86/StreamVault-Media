@@ -55,7 +55,7 @@ export default function Home() {
     queryFn: () => base44.entities.MediaServer.list(),
     staleTime: 60 * 1000,
   });
-  const hasEmby = servers.some(s => s.server_type === 'emby' && s.is_active !== false);
+  const embyServers = servers.filter(s => s.server_type === 'emby' && s.is_active !== false);
   const hasJellyfin = servers.some(s => s.server_type === 'jellyfin' && s.is_active !== false);
   const hasPlex = servers.some(s => s.server_type === 'plex' && s.is_active !== false);
 
@@ -102,14 +102,18 @@ export default function Home() {
 
         {activeTab === 'All' && (
           <>
-            {hasEmby && (
-              <ServerSection name="Emby" accentClass="text-green-500">
-                <EmbyContinueWatching />
-                <EmbyRecentlyAdded />
-                <KidsTvRow />
-                <EmbyLibraryViews />
+            {embyServers.map((server, idx) => (
+              <ServerSection
+                key={server.id}
+                name={server.server_name || (embyServers.length > 1 ? `Emby ${idx + 1}` : 'Emby')}
+                accentClass="text-green-500"
+              >
+                <EmbyContinueWatching serverId={server.id} />
+                <EmbyRecentlyAdded serverId={server.id} />
+                {idx === 0 && <KidsTvRow />}
+                <EmbyLibraryViews serverId={server.id} />
               </ServerSection>
-            )}
+            ))}
 
             {hasJellyfin && (
               <ServerSection name="Jellyfin" accentClass="text-purple-500">

@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Play, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-function ContinueCard({ item, allMedia, onNavigate }) {
+function ContinueCard({ item, allMedia, serverId, onNavigate }) {
   const handleClick = () => {
     // 1. Match by Emby ID tag (most reliable)
     const byEmbyId = allMedia?.find(m => m.tags?.includes(`emby:${item.id}`));
@@ -17,7 +17,7 @@ function ContinueCard({ item, allMedia, onNavigate }) {
     if (byTitle) { onNavigate(`/media/${byTitle.id}`); return; }
 
     // 3. Fallback: navigate with emby item ID so MediaDetail can still play it
-    if (item.id) onNavigate(`/media/emby:${item.id}`);
+    if (item.id) onNavigate(`/media/emby:${item.id}${serverId ? `?server=${serverId}` : ''}`);
   };
 
   return (
@@ -64,13 +64,13 @@ function ContinueCard({ item, allMedia, onNavigate }) {
   );
 }
 
-export default function EmbyContinueWatching() {
+export default function EmbyContinueWatching({ serverId } = {}) {
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['embyContinueWatching'],
+    queryKey: ['embyContinueWatching', serverId || 'default'],
     queryFn: async () => {
-      const res = await base44.functions.invoke('embyContinueWatching', {});
+      const res = await base44.functions.invoke('embyContinueWatching', serverId ? { serverId } : {});
       return res.data;
     },
     staleTime: 10 * 60 * 1000,
@@ -108,7 +108,7 @@ export default function EmbyContinueWatching() {
       </h2>
       <div className="flex gap-3 overflow-x-auto px-4 sm:px-6 pb-2" style={{ scrollbarWidth: 'none' }}>
         {items.map(item => (
-          <ContinueCard key={item.id} item={item} allMedia={allMedia} onNavigate={navigate} />
+          <ContinueCard key={item.id} item={item} allMedia={allMedia} serverId={serverId} onNavigate={navigate} />
         ))}
       </div>
     </div>

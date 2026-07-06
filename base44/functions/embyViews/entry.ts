@@ -1,18 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Module-level server cache — avoids hitting DB on every request
-let _serverCache = null;
-let _serverCacheAt = 0;
-const SERVER_CACHE_TTL = 5 * 60 * 1000;
-
-async function getEmbyServer(base44) {
-  const now = Date.now();
-  if (_serverCache && (now - _serverCacheAt) < SERVER_CACHE_TTL) return _serverCache;
+async function getEmbyServer(base44, serverId) {
   const servers = await base44.entities.MediaServer.list();
-  const server = servers.find(s => s.server_type === 'emby' && s.is_active !== false) || null;
-  _serverCache = server;
-  _serverCacheAt = now;
-  return server;
+  const embyServers = servers.filter(s => s.server_type === 'emby' && s.is_active !== false);
+  if (serverId) return embyServers.find(s => s.id === serverId) || null;
+  return embyServers[0] || null;
 }
 
 async function doFetch(url) {
@@ -77,7 +69,9 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const server = await getEmbyServer(base44);
+    let body = {};
+    try { body = await req.json(); } catch (_) {}
+    const server = await getEmbyServer(base44, body?.serverId);
     if (!server) return Response.json({ views: [] });
 
     const base = server.server_url.replace(/\/$/, '');
