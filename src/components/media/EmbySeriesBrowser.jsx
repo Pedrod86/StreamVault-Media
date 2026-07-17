@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { X, Play, ChevronRight, Loader2, Tv } from 'lucide-react';
+import { X, Play, ChevronRight, Loader2, Tv, Clock, CheckCircle2 } from 'lucide-react';
 import ExoPlayer from './ExoPlayer';
 import QualityBadge from './QualityBadge';
 
@@ -150,13 +150,29 @@ export default function EmbySeriesBrowser({ item, server, onClose }) {
                         <QualityBadge quality={ep.quality} codec={ep.codec} />
                       </div>
                     )}
+                    {ep.progressPercent > 0 && !ep.played && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+                        <div className="h-full bg-primary" style={{ width: `${ep.progressPercent}%` }} />
+                      </div>
+                    )}
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-muted-foreground mb-0.5">
-                      S{String(ep.seasonIndex).padStart(2, '0')}E{String(ep.episodeIndex).padStart(2, '0')}
-                      {ep.durationMinutes ? ` · ${ep.durationMinutes}m` : ''}
-                    </p>
+                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                      <p className="text-[10px] text-muted-foreground">
+                        S{String(ep.seasonIndex).padStart(2, '0')}E{String(ep.episodeIndex).padStart(2, '0')}
+                        {ep.durationMinutes ? ` · ${ep.durationMinutes}m` : ''}
+                      </p>
+                      {ep.played ? (
+                        <span className="flex items-center gap-0.5 text-[10px] text-green-400">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> Watched
+                        </span>
+                      ) : ep.remainingMinutes != null ? (
+                        <span className="flex items-center gap-0.5 text-[10px] text-primary">
+                          <Clock className="w-2.5 h-2.5" /> {ep.remainingMinutes}m left
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-sm font-medium text-foreground truncate">{ep.name}</p>
                     {ep.overview && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{ep.overview}</p>

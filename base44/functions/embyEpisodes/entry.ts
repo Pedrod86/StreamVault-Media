@@ -98,20 +98,30 @@ Deno.serve(async (req) => {
     // Fetch all episodes
     const episodesData = await doFetch(
       `${base}/Shows/${seriesId}/Episodes?UserId=${userId}&api_key=${token}` +
-      `&Fields=Overview,ImageTags,RunTimeTicks,MediaStreams&Limit=500`
+      `&Fields=Overview,ImageTags,RunTimeTicks,MediaStreams,UserData&Limit=500`
     );
     const episodes = (episodesData?.Items || []).map(e => {
       const vStream = (e.MediaStreams || []).find(s => s.Type === 'Video');
       const h = vStream?.Height || 0;
       const quality = h >= 2160 ? '4K' : h >= 1080 ? '1080p' : h >= 720 ? '720p' : h >= 480 ? '480p' : null;
       const codec = vStream?.Codec ? String(vStream.Codec).toUpperCase() : null;
+      const totalTicks = e.RunTimeTicks || 0;
+      const posTicks = e.UserData?.PlaybackPositionTicks || 0;
+      const played = !!e.UserData?.Played;
+      // Runtime remaining in minutes: from resume point if partly watched, else full runtime
+      const remainingTicks = played ? 0 : Math.max(0, totalTicks - posTicks);
+      const remainingMinutes = totalTicks ? Math.round(remainingTicks / 600000000) : null;
+      const progressPercent = totalTicks && posTicks ? Math.min(100, Math.round((posTicks / totalTicks) * 100)) : 0;
       return {
         id: e.Id,
         name: e.Name,
         seasonIndex: e.ParentIndexNumber || 0,
         episodeIndex: e.IndexNumber || 0,
         overview: e.Overview || '',
-        durationMinutes: e.RunTimeTicks ? Math.round(e.RunTimeTicks / 600000000) : null,
+        durationMinutes: totalTicks ? Math.round(totalTicks / 600000000) : null,
+        remainingMinutes,
+        progressPercent,
+        played,
         quality,
         codec,
         thumbUrl: e.ImageTags?.Primary
