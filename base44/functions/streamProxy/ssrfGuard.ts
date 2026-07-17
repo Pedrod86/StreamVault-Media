@@ -114,15 +114,22 @@ export async function safeFetch(rawUrl: string, init: RequestInit = {}): Promise
   if (!headers.has('Host')) headers.set('Host', url.host);
 
   if (url.protocol === 'http:') {
-    // For plain HTTP, connect straight to the vetted IP; Host header routes it.
+    // For plain HTTP, connect straight to the vetted IP so the runtime never
+    // re-resolves the attacker-controlled hostname; the Host header routes it.
     const pinned = new URL(url.toString());
-    pinned.hostname = safeIp;
+    pinned.hostname = safeIp.includes(':') ? `[${safeIp}]` : safeIp;
     return fetch(pinned.toString(), { ...init, headers });
   }
 
-  // For HTTPS we must keep the hostname in the URL so SNI + certificate
-  // validation succeed. Re-validate immediately before connecting to minimise
-  // the rebinding window (resolveSafeTarget above already blocked unsafe IPs).
-  await resolveSafeTarget(rawUrl);
+  // For HTTPS the runtime does its own DNS resolution (SNI + certificate
+  // validation need the real hostname, and custom HTTP clients aren't available
+  // in this runtime, so we can't pin the IP directly). Re-resolve and
+  // re-validate the hostname immediately before the fetch and REJECT if it now
+  // points at a private/loopback/metadata IP — closing the rebinding window
+  // rather than silently discarding the recheck.
+  const recheckIp = await resolveSafeIp(url.hostname);
+  if (recheckIp && isBlockedHost(recheckIp)) {
+    throw new Error('Access to this address is not allowed');
+  }
   return fetch(url.toString(), { ...init, headers });
 }
