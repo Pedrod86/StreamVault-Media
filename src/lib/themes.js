@@ -17,6 +17,12 @@ export const THEMES = [
   { label: '⬛ OLED Black',     primary: '210 40% 96%',  accent: '199 89% 55%',  preview: ['#f0f4f8', '#22b8e6'], bg: { h: 0, s: 0, oled: true } },
   { label: '🎬 Plex',          primary: '41 89% 48%',   accent: '38 95% 60%',   preview: ['#e5a00d', '#f5b942'], bg: { h: 0, s: 0 } },
   { label: '🧊 Glass Dark',    primary: '199 90% 62%',  accent: '210 80% 70%',  preview: ['#38bdf8', '#7dd3fc'], bg: { h: 220, s: 30 }, glass: true },
+
+  // ── Server themes ──
+  { label: '🟠 Orange',        primary: '25 95% 55%',   accent: '38 95% 55%',   preview: ['#f97316', '#f5a623'], bg: { h: 24, s: 35 } },
+  { label: '🟢 Green',         primary: '142 71% 45%',  accent: '160 84% 45%',  preview: ['#22c55e', '#12d39a'], bg: { h: 145, s: 30 } },
+  { label: '🔴 Red',           primary: '0 84% 60%',    accent: '10 85% 58%',   preview: ['#ef4444', '#f0603a'], bg: { h: 0, s: 45 } },
+  { label: '🟡 Golden',        primary: '45 95% 52%',   accent: '38 95% 58%',   preview: ['#f5c518', '#f5b942'], bg: { h: 43, s: 40 } },
 ];
 
 export function applyTheme(primary, accent, cyberpunk = false, bg = null, glass = false) {
