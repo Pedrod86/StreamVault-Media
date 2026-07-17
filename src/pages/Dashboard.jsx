@@ -6,6 +6,7 @@ import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
 import WatchSuggestions from '../components/dashboard/WatchSuggestions';
 import WeeklyPlanner from '../components/dashboard/WeeklyPlanner';
 import HoursWatchedSummary from '../components/dashboard/HoursWatchedSummary';
+import WatchTimeChart from '../components/dashboard/WatchTimeChart';
 import { LayoutDashboard } from 'lucide-react';
 
 export default function Dashboard() {
@@ -37,6 +38,7 @@ export default function Dashboard() {
         </div>
 
         <HoursWatchedSummary />
+        <WatchTimeChart />
         <EmbyContinueWatching />
         <EmbyRecentlyAdded />
         <WatchSuggestions onAddToPlan={handleAddToPlan} />
