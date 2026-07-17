@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       items,
-      server: { id: server.id, server_name: server.server_name, server_url: base, api_token: token },
+      server: { id: server.id, server_name: server.server_name },
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

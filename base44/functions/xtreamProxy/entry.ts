@@ -98,6 +98,13 @@ Deno.serve(async (req) => {
     try { data = JSON.parse(text); } catch { data = null; }
     return Response.json({ data });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Never echo raw error messages — they may contain the upstream URL with
+    // plaintext IPTV username/password. Log server-side, return a generic message.
+    console.error('xtreamProxy error:', error);
+    const isValidation = typeof error?.message === 'string' && error.message.startsWith('Disallowed query parameter');
+    return Response.json(
+      { error: isValidation ? error.message : 'Request failed' },
+      { status: 500 }
+    );
   }
 });
