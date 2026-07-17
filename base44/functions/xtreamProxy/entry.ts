@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { assertSafeUrl } from './ssrfGuard.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -17,6 +18,9 @@ Deno.serve(async (req) => {
     const actionPart = action ? `&action=${action}` : '';
     const extraPart = extra ? `&${extra}` : '';
     const url = `${base}/player_api.php?username=${u}&password=${p}${actionPart}${extraPart}`;
+
+    // SSRF guard: block private/loopback/link-local/metadata destinations
+    await assertSafeUrl(url);
 
     const res = await fetch(url);
     if (!res.ok) {
