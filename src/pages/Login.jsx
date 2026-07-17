@@ -86,8 +86,8 @@ export default function Login() {
   if (tvLayout) {
     return (
       <div
-        className="bg-background w-full relative"
-        style={{ minHeight: '100vh', minHeight: '100dvh', overflowY: 'auto', padding: '16px 16px 64px' }}
+        className="bg-background w-full relative flex flex-col items-center justify-center"
+        style={{ minHeight: '100vh', minHeight: '100dvh', overflowY: 'auto', padding: '48px 48px 48px' }}
       >
         <div className="flex items-center justify-center gap-2 mb-4 shrink-0">
           <img
