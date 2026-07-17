@@ -23,106 +23,6 @@ const INTERVALS = [
   { label: 'Every 24 hours', value: 1440 },
 ];
 
-function TvdbEnrichSection() {
-  const queryClient = useQueryClient();
-  const [status, setStatus] = useState('idle'); // idle | running | done | error
-  const [enriched, setEnriched] = useState(0);
-  const [batches, setBatches] = useState(0);
-  const [error, setError] = useState(null);
-  const stopRef = useRef(false);
-
-  const run = async () => {
-    setStatus('running');
-    setEnriched(0);
-    setBatches(0);
-    setError(null);
-    stopRef.current = false;
-
-    let offset = 0;
-    let totalEnriched = 0;
-    let batchCount = 0;
-
-    try {
-      while (!stopRef.current) {
-        const res = await base44.functions.invoke('tvdbEnrichLibrary', { offset, batchSize: 50 });
-        if (res.data?.error) throw new Error(res.data.error);
-
-        totalEnriched += res.data.enriched || 0;
-        batchCount++;
-        setEnriched(totalEnriched);
-        setBatches(batchCount);
-
-        if (!res.data.hasMore) break;
-        offset = res.data.nextOffset;
-      }
-
-      setStatus('done');
-      queryClient.invalidateQueries({ queryKey: ['media'] });
-    } catch (e) {
-      setError(e.message);
-      setStatus('error');
-    }
-  };
-
-  const stop = () => { stopRef.current = true; };
-
-  return (
-    <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="space-y-4 p-5 rounded-xl bg-card border border-border">
-      <div className="flex items-center gap-2 mb-1">
-        <Tv2 className="w-4 h-4 text-blue-400" />
-        <h2 className="font-heading font-semibold text-foreground">TVDB Metadata Enrichment</h2>
-      </div>
-      <p className="text-xs text-muted-foreground -mt-2">
-        Fills in missing posters, descriptions, and genres for your library using TVDB. Runs in small batches — safe to stop and resume.
-      </p>
-
-      {status === 'running' && (
-        <div className="space-y-2">
-          <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '100%' }} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Batch {batches} — {enriched} items enriched so far…
-          </p>
-        </div>
-      )}
-
-      {status === 'done' && (
-        <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/10 rounded-lg px-3 py-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{enriched} items enriched across {batches} batches.</span>
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          className="flex-1 h-11 border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 gap-2"
-          onClick={run}
-          disabled={status === 'running'}
-        >
-          {status === 'running' ? (
-            <><RefreshCw className="w-4 h-4 animate-spin" />Enriching…</>
-          ) : (
-            <><Tv2 className="w-4 h-4" />Enrich Library with TVDB</>
-          )}
-        </Button>
-        {status === 'running' && (
-          <Button variant="outline" className="h-11 px-4 border-border text-muted-foreground" onClick={stop}>
-            Stop
-          </Button>
-        )}
-      </div>
-    </motion.section>
-  );
-}
-
 const IS_4K = (item) =>
   !!item && (
     item.tags?.some(t => /4k|2160p|uhd/i.test(t)) ||
@@ -720,9 +620,6 @@ export default function Settings() {
           </div>
         )}
       </motion.section>
-
-      {/* ── TVDB Bulk Enrich ── */}
-      <TvdbEnrichSection />
 
       {/* ── API Keys ── */}
       <ApiKeysSection />
