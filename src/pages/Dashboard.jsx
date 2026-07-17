@@ -4,29 +4,17 @@ import PullToRefresh from '../components/layout/PullToRefresh';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import EmbyRecentlyAdded from '../components/media/EmbyRecentlyAdded';
 import WatchSuggestions from '../components/dashboard/WatchSuggestions';
-import WeeklyPlanner from '../components/dashboard/WeeklyPlanner';
 import HoursWatchedSummary from '../components/dashboard/HoursWatchedSummary';
 import WatchTimeChart from '../components/dashboard/WatchTimeChart';
 import { LayoutDashboard } from 'lucide-react';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const [pendingItem, setPendingItem] = useState(null);
 
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['embyContinueWatching'] });
     await queryClient.invalidateQueries({ queryKey: ['embyRecentlyAdded'] });
     await queryClient.invalidateQueries({ queryKey: ['watchSuggestions'] });
-    await queryClient.invalidateQueries({ queryKey: ['weeklyPlan'] });
-  };
-
-  const handleAddToPlan = (item) => {
-    setPendingItem({
-      title: item.title,
-      media_type: item.media_type,
-      poster_url: item.poster_url,
-      emby_id: item.emby_id,
-    });
   };
 
   return (
@@ -41,8 +29,7 @@ export default function Dashboard() {
         <WatchTimeChart />
         <EmbyContinueWatching />
         <EmbyRecentlyAdded />
-        <WatchSuggestions onAddToPlan={handleAddToPlan} />
-        <WeeklyPlanner pendingItem={pendingItem} onConsumePending={() => setPendingItem(null)} />
+        <WatchSuggestions />
       </div>
     </PullToRefresh>
   );
