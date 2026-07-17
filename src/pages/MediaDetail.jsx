@@ -17,6 +17,7 @@ import TvdbInfo from '../components/media/TvdbInfo';
 import PlaySourcePicker from '../components/media/PlaySourcePicker';
 import PlexSeriesBrowser from '@/components/media/PlexSeriesBrowser';
 import MediaInfoPanel from '../components/media/MediaInfoPanel';
+import DownloadButton from '../components/media/DownloadButton';
 import { getVodStreams, getVodStreamUrl } from '../lib/xtreamApi';
 
 export default function MediaDetail() {
@@ -293,6 +294,22 @@ export default function MediaDetail() {
       </div>
     );
   }
+
+  // Resolve a direct file URL to download this title (movies only — TV shows
+  // have no single file). Reuses the same static/direct sources as playback.
+  const downloadUrl = activeMedia.media_type === 'tv_show'
+    ? null
+    : (embyItem && embyServer
+        ? `${embyServer.server_url?.replace(/\/$/, '')}/Videos/${embyItem.id}/stream?api_key=${embyServer.api_token}&Static=true`
+        : hasJellyfin && jellyfinServer
+        ? `${jellyfinServer.server_url?.replace(/\/$/, '')}/Videos/${jellyfinId}/stream?api_key=${jellyfinServer.api_token}&Static=true`
+        : isPlexDirect && plexStreamUrl
+        ? plexStreamUrl
+        : iptvVod && xtreamServer
+        ? getVodStreamUrl(xtreamServer, iptvVod.stream_id, iptvVod.container_extension || 'mp4')
+        : activeMedia.video_url || null);
+
+  const downloadName = `${activeMedia.title}${activeMedia.year ? ` (${activeMedia.year})` : ''}.mp4`;
 
   // Similar media
   const similar = allMedia.filter(m =>
@@ -627,6 +644,7 @@ export default function MediaDetail() {
               >
                 <FolderPlus className="w-4 h-4" /> Collections
               </Button>
+              <DownloadButton url={downloadUrl} filename={downloadName} />
             </div>
             <AddToCollectionDialog mediaId={historyKey} open={showCollections} onOpenChange={setShowCollections} />
 
