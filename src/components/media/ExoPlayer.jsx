@@ -27,6 +27,20 @@ function loadPrefs() {
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const FRAME_RATES = ['auto', '24', '30', '48', '60'];
+
+// Cap HLS ABR to the highest level whose frame rate is at or below the preference.
+// Levels without frameRate metadata are always kept (unknown ≠ too high).
+function applyFrameRateCap(hls, pref) {
+  if (!hls) return;
+  if (pref === 'auto') { hls.autoLevelCapping = -1; return; }
+  const limit = parseFloat(pref);
+  const allowed = (hls.levels || [])
+    .map((l, i) => ({ i, fps: l.frameRate ? Math.round(l.frameRate) : null }))
+    .filter(l => l.fps == null || l.fps <= limit + 1);
+  if (!allowed.length) { hls.autoLevelCapping = -1; return; }
+  hls.autoLevelCapping = Math.max(...allowed.map(l => l.i));
+}
 
 // On touch devices the OS controls volume via hardware buttons and rejects
 // programmatic volume changes (slider snaps back), so hide the on-screen slider.
@@ -101,6 +115,8 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const prefs = loadPrefs();
   const skipSecs = parseInt(prefs.skipSeconds || '10', 10);
   const initVol = parseFloat(prefs.defaultVolume || '1');
+  // Preferred max frame rate: 'auto' | '24' | '30' | '48' | '60'
+  const [maxFrameRate, setMaxFrameRate] = useState(prefs.frameRate || 'auto');
 
   // Video fit mode — starts from the saved preference, toggleable in-player.
   const [fitMode, setFitMode] = useState(prefs.fitMode || 'contain');
@@ -256,6 +272,9 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
             resolution: topLevel.width && topLevel.height ? `${topLevel.width}×${topLevel.height}` : null,
           });
         }
+
+        // Apply the user's preferred max frame rate to the ABR ceiling
+        applyFrameRateCap(hls, maxFrameRate);
 
         v.volume = initVol;
         if (startAt > 0) v.currentTime = startAt;
@@ -472,6 +491,17 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
 
   // Show the Skip Intro button while playhead is within the intro window.
   const showSkipIntro = introEnd > 0 && currentTime < introEnd && currentTime >= 0;
+
+  const setPreferredFrameRate = (fps) => {
+    setMaxFrameRate(fps);
+    applyFrameRateCap(hlsRef.current, fps);
+    try {
+      const p = loadPrefs();
+      localStorage.setItem('sv_player_prefs', JSON.stringify({ ...p, frameRate: fps }));
+    } catch (_) {}
+    setSettingsTab(null);
+    resetHideTimer();
+  };
 
   const setPlaybackSpeed = (s) => {
     if (!videoRef.current) return;
@@ -965,6 +995,13 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
                       <button key={s} onClick={() => setPlaybackSpeed(s)}
                         className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${speed === s ? 'text-primary font-semibold' : 'text-white'}`}>
                         {s === 1 ? 'Normal' : `${s}×`}
+                      </button>
+                    ))}
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest px-3 pt-3 pb-1 border-t border-white/10 mt-1">Frame Rate</p>
+                    {FRAME_RATES.map(f => (
+                      <button key={f} onClick={() => setPreferredFrameRate(f)}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${maxFrameRate === f ? 'text-primary font-semibold' : 'text-white'}`}>
+                        {f === 'auto' ? 'Auto (source)' : `Up to ${f} fps`}
                       </button>
                     ))}
                   </div>

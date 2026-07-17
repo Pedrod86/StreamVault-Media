@@ -12,7 +12,16 @@ const defaults = {
   defaultVolume: '1',
   autoplay: 'true',
   fitMode: 'contain',
+  frameRate: 'auto',
 };
+
+export const FRAME_RATE_OPTIONS = [
+  ['auto', 'Auto (source)'],
+  ['24', '24 fps (cinematic)'],
+  ['30', '30 fps (standard)'],
+  ['48', '48 fps (smooth)'],
+  ['60', '60 fps (high frame rate)'],
+];
 
 export function loadPlayerPrefs() {
   try {
@@ -119,6 +128,26 @@ export default function VideoAudioSection() {
               <SelectItem value="contain">Contain (letterbox)</SelectItem>
               <SelectItem value="cover">Cover (crop to fill)</SelectItem>
               <SelectItem value="fill">Stretch to fill</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Preferred frame rate */}
+        <div>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm text-foreground">Preferred frame rate</Label>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+              {prefs.frameRate === 'auto' ? 'Auto' : `${prefs.frameRate} fps`}
+            </span>
+          </div>
+          <Select value={prefs.frameRate} onValueChange={v => set('frameRate', v)}>
+            <SelectTrigger className="mt-1 bg-secondary border-border h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-card border-border">
+              {FRAME_RATE_OPTIONS.map(([val, label]) => (
+                <SelectItem key={val} value={val}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
