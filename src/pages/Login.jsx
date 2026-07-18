@@ -88,10 +88,22 @@ export default function Login() {
   if (tvLayout) {
     return (
       <div
-        className="bg-background w-full relative flex flex-col items-center justify-center"
+        className="w-full relative flex flex-col items-center justify-center overflow-hidden"
         style={{ minHeight: '100vh', minHeight: '100dvh', overflowY: 'auto', padding: '48px 48px 48px' }}
       >
-        <div className="flex items-center justify-center gap-2 mb-4 shrink-0">
+        {/* ── Cinematic full-screen background ── */}
+        <div className="absolute inset-0 -z-10">
+          <img
+            src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2400&auto=format&fit=crop"
+            alt=""
+            className="w-full h-full object-cover scale-105 animate-[cine-pan_30s_ease-in-out_infinite_alternate]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/20" />
+          <div className="absolute inset-0 bg-background/40" />
+        </div>
+
+        <div className="flex items-center justify-center gap-2 mb-4 shrink-0 animate-logo-flash">
           <img
             src="https://media.base44.com/images/public/69fe35055df988e0955e5c11/6a6f0ca7a_generated_image.png"
             alt="StreamVault"
@@ -99,8 +111,8 @@ export default function Login() {
           />
           <span className="font-heading font-bold text-lg text-foreground">StreamVault</span>
         </div>
-        <div style={{ width: '100%', maxWidth: 460, padding: '24px' }}
-          className="bg-card rounded-2xl border border-border shadow-2xl mx-auto shrink-0">
+        <div style={{ width: '100%', maxWidth: 460, padding: '24px', boxShadow: 'inset 0 1px 0 hsl(0 0% 100% / 0.08), 0 24px 60px hsl(240 40% 2% / 0.6)' }}
+          className="bg-card/60 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl mx-auto shrink-0">
           <div className="text-center mb-5">
             <h1 className="font-heading font-bold text-2xl text-foreground">Sign In</h1>
             <p className="text-muted-foreground text-sm mt-1">Use your remote to navigate</p>
@@ -161,6 +173,16 @@ export default function Login() {
                 </button>
               </div>
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={rememberMe}
+                onCheckedChange={(v) => setRememberMe(!!v)}
+                className="border-white/25 w-5 h-5 tv-focusable"
+                tabIndex={6}
+              />
+              <span className="text-sm text-muted-foreground">Remember me</span>
+            </label>
 
             <Button
               type="submit"
