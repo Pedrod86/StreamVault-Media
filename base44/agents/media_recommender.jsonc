@@ -28,8 +28,7 @@
   "context_files": [],
   "app_user_connector_configs": [],
   "selected_skill_names": [
-    "refund-policy",
-    "support-escalation"
+    "refund-policy"
   ],
   "selected_workspace_skill_ids": [],
   "model": "gpt_5_5",
