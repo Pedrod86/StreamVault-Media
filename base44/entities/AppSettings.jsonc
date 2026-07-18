@@ -41,6 +41,14 @@
       "type": "string",
       "description": "Trakt client ID"
     },
+    "api_key_openai": {
+      "type": "string",
+      "description": "OpenAI (ChatGPT) API key"
+    },
+    "api_key_gemini": {
+      "type": "string",
+      "description": "Google Gemini API key"
+    },
     "description": {
       "type": "string",
       "description": "Optional description or notes for this settings configuration",

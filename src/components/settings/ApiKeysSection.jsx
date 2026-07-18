@@ -47,6 +47,22 @@ const API_SERVICES = [
     placeholder: 'Enter your Trakt client ID',
     docsUrl: 'https://trakt.tv/oauth/applications',
   },
+  {
+    id: 'openai',
+    label: 'ChatGPT (OpenAI)',
+    description: 'AI-powered recommendations and chat.',
+    settingsKey: 'api_key_openai',
+    placeholder: 'Enter your OpenAI API key',
+    docsUrl: 'https://platform.openai.com/api-keys',
+  },
+  {
+    id: 'gemini',
+    label: 'Gemini (Google)',
+    description: 'Google AI for recommendations and chat.',
+    settingsKey: 'api_key_gemini',
+    placeholder: 'Enter your Gemini API key',
+    docsUrl: 'https://aistudio.google.com/app/apikey',
+  },
 ];
 
 function ApiKeyRow({ service, currentValue, onSave }) {
