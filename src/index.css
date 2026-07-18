@@ -259,6 +259,12 @@ button:focus-visible,
   animation: logo-flash 0.9s ease-out both;
 }
 
+/* Slow cinematic background pan for the login screen */
+@keyframes cine-pan {
+  0%   { transform: scale(1.05) translate3d(0, 0, 0); }
+  100% { transform: scale(1.12) translate3d(-2%, -2%, 0); }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
