@@ -17,6 +17,7 @@ import JellyfinLibraryViews from '../components/media/JellyfinLibraryViews';
 import PlexLibraryViews from '../components/media/PlexLibraryViews';
 import KidsTvRow from '../components/media/KidsTvRow';
 import HomeCategoryRows from '../components/media/HomeCategoryRows';
+import LazyMount from '../components/layout/LazyMount';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
@@ -90,7 +91,9 @@ export default function Home() {
       )}
 
       {/* Themed rows built from the synced library */}
-      <HomeCategoryRows />
+      <LazyMount minHeight={360}>
+        <HomeCategoryRows />
+      </LazyMount>
 
       <div className="mt-6 space-y-2">
 
@@ -100,25 +103,25 @@ export default function Home() {
             name={server.server_name || (embyServers.length > 1 ? `Emby ${idx + 1}` : 'Emby')}
             accentClass="text-green-500"
           >
-            {idx > 0 && <EmbyContinueWatching serverId={server.id} />}
-            {idx > 0 && <EmbyRecentlyAdded serverId={server.id} />}
-            {idx === 0 && <KidsTvRow />}
-            <EmbyGenreRows serverId={server.id} />
-            <EmbyLibraryViews serverId={server.id} />
+            {idx > 0 && <LazyMount><EmbyContinueWatching serverId={server.id} /></LazyMount>}
+            {idx > 0 && <LazyMount><EmbyRecentlyAdded serverId={server.id} /></LazyMount>}
+            {idx === 0 && <LazyMount minHeight={280}><KidsTvRow /></LazyMount>}
+            <LazyMount minHeight={640}><EmbyGenreRows serverId={server.id} /></LazyMount>
+            <LazyMount minHeight={640}><EmbyLibraryViews serverId={server.id} /></LazyMount>
           </ServerSection>
         ))}
 
         {hasJellyfin && (
           <ServerSection name="Jellyfin" accentClass="text-purple-500">
-            <JellyfinContinueWatching />
-            <JellyfinRecentlyAdded />
-            <JellyfinLibraryViews />
+            <LazyMount><JellyfinContinueWatching /></LazyMount>
+            <LazyMount><JellyfinRecentlyAdded /></LazyMount>
+            <LazyMount minHeight={640}><JellyfinLibraryViews /></LazyMount>
           </ServerSection>
         )}
 
         {hasPlex && (
           <ServerSection name="Plex" accentClass="text-yellow-500">
-            <PlexLibraryViews />
+            <LazyMount minHeight={640}><PlexLibraryViews /></LazyMount>
           </ServerSection>
         )}
       </div>

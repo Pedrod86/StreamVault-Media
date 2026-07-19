@@ -23,7 +23,7 @@ const trendingScore = (m) => (m.rating || 0) + (m.year ? (m.year - 1990) / 25 : 
 export default function HomeCategoryRows() {
   const { data: media = [], isLoading } = useQuery({
     queryKey: ['media', 'home-rows'],
-    queryFn: () => base44.entities.Media.filter({ tags: 'emby' }, '-created_date', 2000),
+    queryFn: () => base44.entities.Media.filter({ tags: 'emby' }, '-created_date', 600),
     staleTime: 5 * 60 * 1000,
   });
 
