@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { resolveEmbyUserId } from '../../shared/embyAuth.ts';
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -57,20 +58,6 @@ function buildStreamUrl(base, itemId, token) {
   return `${base}/Videos/${itemId}/stream?api_key=${token}&Static=true`;
 }
 
-async function resolveUserId(base, token) {
-  try {
-    const me = await doFetch(`${base}/Users/Me?api_key=${token}`);
-    if (me?.Id) return me.Id;
-  } catch (_) {}
-  try {
-    const users = await doFetch(`${base}/Users?api_key=${token}`);
-    const list = Array.isArray(users) ? users : (users?.Items || []);
-    const admin = list.find(u => u.Policy?.IsAdministrator) || list[0];
-    if (admin?.Id) return admin.Id;
-  } catch (_) {}
-  throw new Error('Could not authenticate with Emby. Check your API token.');
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -94,7 +81,7 @@ Deno.serve(async (req) => {
 
     const base = server.server_url.replace(/\/$/, '');
     const token = server.api_token;
-    const userId = await resolveUserId(base, token);
+    const userId = await resolveEmbyUserId(base44, server, base, token);
 
     // ids: fetch specific items by Emby id (used by the watchlist row)
     const ids = Array.isArray(body.ids) ? body.ids.filter(Boolean) : [];
