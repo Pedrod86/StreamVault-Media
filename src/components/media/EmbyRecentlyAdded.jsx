@@ -77,7 +77,17 @@ export default function EmbyRecentlyAdded({ serverId } = {}) {
     retry: false,
   });
 
-  const items = data?.items || [];
+  // Collapse duplicate titles — the same film/show can exist as several distinct
+  // Emby items (different ids, identical title/year/type). Keep the first of each.
+  const items = (() => {
+    const seen = new Set();
+    return (data?.items || []).filter(it => {
+      const key = `${(it.title || '').trim().toLowerCase()}|${it.year || ''}|${it.type || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
 
   if (error) {
     return (
