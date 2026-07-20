@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { base44 } from '@/api/base44Client';
-import { X, Maximize, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from 'lucide-react';
+import { X, Maximize, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Ratio } from 'lucide-react';
+
+const FIT_MODES = [
+  { key: 'contain', label: 'Fit', className: 'object-contain', style: {} },
+  { key: 'cover', label: 'Fill', className: 'object-cover', style: {} },
+  { key: 'stretch', label: 'Stretch', className: '', style: { objectFit: 'fill' } },
+];
 
 function formatTime(secs) {
   const s = Math.floor(secs || 0);
@@ -25,6 +31,13 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [fitIndex, setFitIndex] = useState(0);
+  const fitMode = FIT_MODES[fitIndex];
+
+  const cycleFit = () => {
+    setFitIndex((i) => (i + 1) % FIT_MODES.length);
+    resetHideTimer();
+  };
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -152,7 +165,8 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
 
       <video
         ref={videoRef}
-        className="w-full h-full object-contain"
+        className={`w-full h-full ${fitMode.className}`}
+        style={fitMode.style}
         autoPlay
         playsInline
         webkit-playsinline="true"
@@ -233,6 +247,11 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
           </span>
 
           <div className="flex-1" />
+
+          <button onClick={cycleFit} className="flex items-center gap-1 text-white/70 hover:text-white transition-colors">
+            <Ratio className="w-5 h-5" />
+            <span className="text-xs font-medium">{fitMode.label}</span>
+          </button>
 
           <button onClick={() => videoRef.current?.requestFullscreen?.()} className="text-white/70 hover:text-white transition-colors">
             <Maximize className="w-5 h-5" />
