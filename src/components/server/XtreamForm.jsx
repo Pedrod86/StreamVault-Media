@@ -87,20 +87,17 @@ export default function XtreamForm({ onBack, onSave, isSaving }) {
     try {
       res = await fetch(testUrl);
     } catch (err) {
-      if (isHttp) {
-        // Almost certainly a mixed-content / CORS block
-        setCorsWarning(true);
-        // Save anyway without verification — user can try
-        onSave({
-          server_url: base,
-          username,
-          password,
-          server_name: serverName || 'My IPTV Provider',
-          auth_method: 'credentials',
-        });
-        return;
-      }
-      setError('Cannot reach the server. Check the URL and ensure it is reachable from your device.');
+      // Browser couldn't verify (mixed-content / CORS / provider IP filtering).
+      // This is expected for most IPTV providers and does NOT mean the credentials
+      // are wrong — save the server anyway so it can be used with an external player.
+      setCorsWarning(true);
+      onSave({
+        server_url: base,
+        username,
+        password,
+        server_name: serverName || 'My IPTV Provider',
+        auth_method: 'credentials',
+      });
       return;
     }
 
@@ -127,9 +124,17 @@ export default function XtreamForm({ onBack, onSave, isSaving }) {
       return;
     }
 
-    // Some providers return an HTTP error status with a JSON error body
+    // A non-OK status without a clear auth failure is often just IP/region
+    // filtering on the provider's side — save anyway and let the user try.
     if (!res.ok && !data?.user_info) {
-      setError(`Server responded with status ${res.status}. Check your credentials.`);
+      setCorsWarning(true);
+      onSave({
+        server_url: base,
+        username,
+        password,
+        server_name: serverName || 'My IPTV Provider',
+        auth_method: 'credentials',
+      });
       return;
     }
 
@@ -224,8 +229,8 @@ export default function XtreamForm({ onBack, onSave, isSaving }) {
 
           {corsWarning && (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 leading-relaxed space-y-1">
-              <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Saved — but connection test was blocked</p>
-              <p>Your provider uses HTTP (not HTTPS), which browsers block when running inside a secure app. Your credentials have been saved. Library sync may be limited, but stream URLs will still work in a native player.</p>
+              <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Saved — connection couldn't be verified</p>
+              <p>Most IPTV providers block connection tests from browsers and cloud servers, so we couldn't verify your login automatically. Your details have been saved. Open channels with the <span className="font-semibold">External Player</span> (VLC/MX) button, which streams directly from your device.</p>
             </div>
           )}
 
