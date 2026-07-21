@@ -4,6 +4,20 @@ import { getDiscordWebhookUrl } from '../../shared/discordWebhook.ts';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    // This endpoint is triggered by the "Media create" entity automation, which
+    // the platform runs as an authenticated admin. Reject any unauthenticated or
+    // non-admin caller so an anonymous POST can't spam the Discord webhook.
+    let user;
+    try {
+      user = await base44.auth.me();
+    } catch {
+      user = null;
+    }
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const webhookUrl = await getDiscordWebhookUrl(base44);

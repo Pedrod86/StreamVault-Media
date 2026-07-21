@@ -87,11 +87,8 @@ function isBlockedHost(host: string): boolean {
   return false;
 }
 
-// Resolve the hostname and return the first safe IPv4/IPv6 address.
-// Throws if the hostname resolves to any private/loopback/link-local/metadata IP.
-async function resolveSafeIp(hostname: string): Promise<string | null> {
-  // Already an IP literal — isBlockedHost has already vetted it upstream.
-  if (parseIpv4(hostname) || hostname.includes(':')) return null;
+// Resolve every A / AAAA record for a hostname. Returns [] on total failure.
+async function resolveAllIps(hostname: string): Promise<string[]> {
   const resolved: string[] = [];
   for (const kind of ['A', 'AAAA'] as const) {
     try {
@@ -101,6 +98,15 @@ async function resolveSafeIp(hostname: string): Promise<string | null> {
       // Ignore per-record-type resolution failures (e.g. no AAAA record)
     }
   }
+  return resolved;
+}
+
+// Resolve the hostname and return the first safe IPv4/IPv6 address.
+// Throws if the hostname resolves to any private/loopback/link-local/metadata IP.
+async function resolveSafeIp(hostname: string): Promise<string | null> {
+  // Already an IP literal — isBlockedHost has already vetted it upstream.
+  if (parseIpv4(hostname) || hostname.includes(':')) return null;
+  const resolved = await resolveAllIps(hostname);
   if (!resolved.length) return null; // let fetch handle "host not found"
   // If ANY resolved IP is unsafe, block outright.
   for (const ip of resolved) {
@@ -162,15 +168,23 @@ export async function safeFetch(rawUrl: string, init: RequestInit = {}): Promise
     return fetch(pinned.toString(), { ...init, headers });
   }
 
-  // For HTTPS the runtime does its own DNS resolution (SNI + certificate
-  // validation need the real hostname, and custom HTTP clients aren't available
-  // in this runtime, so we can't pin the IP directly). Re-resolve and
-  // re-validate the hostname immediately before the fetch and REJECT if it now
-  // points at a private/loopback/metadata IP — closing the rebinding window
-  // rather than silently discarding the recheck.
-  const recheckIp = await resolveSafeIp(url.hostname);
-  if (recheckIp && isBlockedHost(recheckIp)) {
-    throw new Error('Access to this address is not allowed');
+  // HTTPS: this runtime exposes no custom HTTP client (Deno.createHttpClient is
+  // unavailable), so we cannot connect to the vetted IP while preserving SNI /
+  // certificate validation — native fetch always re-resolves the hostname. That
+  // leaves a hostname-based https fetch open to DNS rebinding.
+  //
+  // To close the TOCTOU race we resolve the hostname ONE final time immediately
+  // before the fetch and require EVERY currently-resolved IP to (a) still be
+  // safe AND (b) equal the exact IP we originally vetted. If DNS has flipped to
+  // a new or blocked address during the rebinding window the sets won't match
+  // and we reject — so the fetch only proceeds when the DNS answer is stable and
+  // safe across both checks.
+  const finalIps = await resolveAllIps(url.hostname);
+  if (!finalIps.length) throw new Error('Access to this address is not allowed');
+  for (const ip of finalIps) {
+    if (isBlockedHost(ip) || ip !== safeIp) {
+      throw new Error('Access to this address is not allowed');
+    }
   }
   return fetch(url.toString(), { ...init, headers });
 }
