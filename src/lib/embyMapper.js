@@ -64,6 +64,40 @@ function cleanTitle(name) {
 }
 
 /**
+ * Pull the video resolution (height/width) from an Emby item. Emby exposes it
+ * either at the top level (Width/Height) or on the primary media source's video
+ * MediaStream. Returns { height, width } with 0s when unavailable.
+ */
+function extractResolution(item) {
+  let height = Number(item.Height) || 0;
+  let width = Number(item.Width) || 0;
+  if (!height || !width) {
+    const streams = item.MediaSources?.[0]?.MediaStreams || item.MediaStreams || [];
+    const video = streams.find(s => s.Type === 'Video');
+    if (video) {
+      height = height || Number(video.Height) || 0;
+      width = width || Number(video.Width) || 0;
+    }
+  }
+  return { height, width };
+}
+
+/** Short resolution label from height/width, mirroring src/lib/resolutionLabel.js. */
+function resolutionLabelFrom(height, width) {
+  const h = Number(height) || 0;
+  const w = Number(width) || 0;
+  if (!h && !w) return undefined;
+  if (h >= 4320 || w >= 7680) return '8K';
+  if (h >= 2000 || w >= 3800) return '4K';
+  if (h >= 1400 || w >= 2400) return '1440p';
+  if (h >= 1000 || w >= 1800) return '1080p';
+  if (h >= 700 || w >= 1200) return '720p';
+  if (h >= 550 || w >= 900) return '576p';
+  if (h > 0) return 'SD';
+  return undefined;
+}
+
+/**
  * Build the Emby image URL for a given item and image type.
  * Uses the token as a query param (api_key) which Emby accepts.
  */
@@ -88,6 +122,7 @@ function backdropUrl(base, itemId, tags, token) {
 export function mapEmbyItem(item, base, token) {
   const isMovie = item.Type === 'Movie';
   const isSeries = item.Type === 'Series';
+  const { height, width } = extractResolution(item);
 
   const poster = imageUrl(base, item.Id, 'Primary', item.ImageTags?.Primary, token);
   const backdrop = backdropUrl(base, item.Id, item.BackdropImageTags, token);
@@ -115,6 +150,7 @@ export function mapEmbyItem(item, base, token) {
       .map(p => p.Name) || [],
     studio: item.Studios?.[0]?.Name || undefined,
     content_rating: mapContentRating(item.OfficialRating),
+    resolution: resolutionLabelFrom(height, width),
     season_count: isSeries && item.ChildCount ? Number(item.ChildCount) : undefined,
     episode_count: isSeries && item.RecursiveItemCount ? Number(item.RecursiveItemCount) : undefined,
     // Persist the Emby item ID as a tag so series (which have no video_url)

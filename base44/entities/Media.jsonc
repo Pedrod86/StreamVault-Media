@@ -88,6 +88,10 @@
       ],
       "description": "Content rating"
     },
+    "resolution": {
+      "type": "string",
+      "description": "Video resolution label derived from the source (e.g. 4K, 1080p, 720p, SD)"
+    },
     "season_count": {
       "type": "number",
       "description": "Number of seasons (for TV shows)"

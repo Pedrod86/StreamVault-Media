@@ -4,6 +4,7 @@ import { Star, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MediaContextMenu from './MediaContextMenu';
 import DownloadedBadge from './DownloadedBadge';
+import QualityBadge from './QualityBadge';
 import { useDownloads } from '@/hooks/useDownloads';
 
 export default function MediaCard({ media, showProgress, progress, disableNavigation }) {
@@ -111,6 +112,7 @@ export default function MediaCard({ media, showProgress, progress, disableNaviga
             <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary/80 backdrop-blur-sm text-primary-foreground px-1.5 py-0.5 rounded">
               {media.media_type === 'tv_show' ? 'Series' : 'Movie'}
             </span>
+            {media.resolution && <QualityBadge quality={media.resolution} />}
             {isDownloaded && <DownloadedBadge />}
           </div>
 

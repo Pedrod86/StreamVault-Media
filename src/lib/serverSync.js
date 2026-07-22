@@ -1,5 +1,33 @@
 import { base44 } from '@/api/base44Client';
 import { mapEmbyItem } from '@/lib/embyMapper';
+import { resolutionLabel } from '@/lib/resolutionLabel';
+
+/** Read the video stream dimensions from an Emby/Jellyfin item and label them. */
+function embyResolution(item) {
+  let height = Number(item.Height) || 0;
+  let width = Number(item.Width) || 0;
+  if (!height || !width) {
+    const streams = item.MediaSources?.[0]?.MediaStreams || item.MediaStreams || [];
+    const video = streams.find(s => s.Type === 'Video');
+    if (video) {
+      height = height || Number(video.Height) || 0;
+      width = width || Number(video.Width) || 0;
+    }
+  }
+  return resolutionLabel(height, width);
+}
+
+/** Read the video resolution from a Plex item's Media entry and label it. */
+function plexResolution(item) {
+  const media = item.Media?.[0];
+  if (!media) return undefined;
+  // Plex often gives a videoResolution string like "4k", "1080", "720", "sd".
+  const vr = String(media.videoResolution || '').toLowerCase();
+  if (vr === '4k') return '4K';
+  if (vr === 'sd') return 'SD';
+  return resolutionLabel(media.height, media.width) ||
+    (vr && /^\d+$/.test(vr) ? `${vr}p` : undefined);
+}
 
 /**
  * All fetches go through the server-side mediaProxy backend function
@@ -96,6 +124,7 @@ function mapPlexItem(item, base, token, sectionType) {
     studio: item.studio || undefined,
     content_rating: contentRating || undefined,
     season_count: item.childCount ? Number(item.childCount) : undefined,
+    resolution: sectionType === 'show' ? undefined : plexResolution(item),
     tags: autoTags(genres, contentRating),
   };
 }
@@ -120,7 +149,7 @@ async function fetchJellyfinLibrary(server, onProgress) {
 
   while (true) {
     const json = await proxyFetch(
-      `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount&Limit=${PAGE_SIZE}&StartIndex=${startIndex}`,
+      `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,MediaSources,Width,Height&Limit=${PAGE_SIZE}&StartIndex=${startIndex}`,
       authHeaders
     );
     const items = json.Items || [];
@@ -156,6 +185,7 @@ function mapJellyfinItem(item, base, token) {
     studio: item.Studios?.[0]?.Name,
     content_rating: item.OfficialRating || undefined,
     season_count: item.ChildCount || undefined,
+    resolution: item.Type === 'Series' ? undefined : embyResolution(item),
     tags: autoTags(item.Genres || [], item.OfficialRating || '', ['jellyfin', `jellyfin:${item.Id}`]),
   };
 }
@@ -186,6 +216,7 @@ function mapEmbyItemForSync(item, base, token) {
     cast: item.People?.filter(p => p.Type === 'Actor').slice(0, 8).map(p => p.Name) || [],
     studio: item.Studios?.[0]?.Name,
     season_count: item.ChildCount || undefined,
+    resolution: item.Type === 'Series' ? undefined : embyResolution(item),
     tags: autoTags(genres, contentRating, ['emby']),
   };
 }
@@ -230,7 +261,7 @@ async function fetchEmbyLibrary(server, onProgress) {
   while (true) {
     const json = await proxyFetch(
       `${base}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true` +
-      `&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
+      `&Fields=Overview,Genres,People,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaSources,Width,Height` +
       `&SortBy=SortName&SortOrder=Ascending&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`,
       {}
     );
@@ -361,7 +392,7 @@ async function fetchEmbyRecentlyAdded(server) {
 
   const json = await proxyFetch(
     `${base}/Users/${userId}/Items/Latest?IncludeItemTypes=Movie,Series` +
-    `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags` +
+    `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaSources,Width,Height` +
     `&Limit=50&api_key=${token}`,
     {}
   );
@@ -400,7 +431,7 @@ async function fetchJellyfinRecentlyAdded(server) {
   const userId = (userList.find(u => u.Policy?.IsAdministrator) || userList[0]).Id;
 
   const json = await proxyFetch(
-    `${base}/Users/${userId}/Items/Latest?IncludeItemTypes=Movie,Series&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount&Limit=50`,
+    `${base}/Users/${userId}/Items/Latest?IncludeItemTypes=Movie,Series&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,MediaSources,Width,Height&Limit=50`,
     authHeaders
   );
   const rawItems = Array.isArray(json) ? json : (json?.Items || []);
