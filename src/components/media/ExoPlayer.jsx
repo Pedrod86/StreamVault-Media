@@ -158,6 +158,7 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
   const [speed, setSpeed] = useState(parseFloat(prefs.speed || '1'));
   const [seekPreview, setSeekPreview] = useState(null);
   const [tapFlash, setTapFlash] = useState(null);
+  const [showVolume, setShowVolume] = useState(false);
   const [pip, setPip] = useState(false);
   const [pipError, setPipError] = useState(null);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -1025,14 +1026,32 @@ export default function ExoPlayer({ src, title, onClose, onProgress, startAt = 0
                 <SkipForward className="w-5 h-5" />
                 <span className="absolute text-[8px] font-bold">{skipSecs}</span>
               </button>
-              <div className="flex items-center gap-1 group/vol">
-                <Btn onClick={toggleMute} title="Mute">
+              <div className="relative flex items-center gap-1 group/vol">
+                <Btn
+                  onClick={() => IS_TOUCH ? setShowVolume(v => !v) : toggleMute()}
+                  title="Volume"
+                >
                   {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Btn>
                 {!IS_TOUCH && (
                   <div className="w-0 overflow-hidden group-hover/vol:w-20 transition-all duration-200">
                     <input type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
                       onChange={handleVolumeChange} className="w-20 accent-primary cursor-pointer" />
+                  </div>
+                )}
+                {IS_TOUCH && showVolume && (
+                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 bg-black/90 border border-white/15 rounded-2xl px-3 py-4 z-30 shadow-2xl">
+                    <span className="text-white/60 text-[10px]">{muted ? '0' : Math.round(volume * 100)}%</span>
+                    <input
+                      type="range" min={0} max={1} step={0.05}
+                      value={muted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                      className="accent-primary cursor-pointer"
+                      style={{ writingMode: 'vertical-lr', direction: 'rtl', height: '100px', width: '28px' }}
+                    />
+                    <button onClick={toggleMute} className="text-white/60 text-[10px] hover:text-white">
+                      {muted ? 'Unmute' : 'Mute'}
+                    </button>
                   </div>
                 )}
               </div>

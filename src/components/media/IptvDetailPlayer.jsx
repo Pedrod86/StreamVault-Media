@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import { base44 } from '@/api/base44Client';
-import { X, Maximize, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Ratio } from 'lucide-react';
+import { X, Maximize, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Ratio, AudioLines, Subtitles } from 'lucide-react';
 
 const FIT_MODES = [
   { key: 'contain', label: 'Fit', className: 'object-contain', style: {} },
@@ -33,6 +33,37 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
   const [showControls, setShowControls] = useState(true);
   const [fitIndex, setFitIndex] = useState(0);
   const fitMode = FIT_MODES[fitIndex];
+
+  // HLS audio / subtitle tracks
+  const [audioTracks, setAudioTracks] = useState([]);
+  const [currentAudio, setCurrentAudio] = useState(0);
+  const [subtitleTracks, setSubtitleTracks] = useState([]);
+  const [currentSubtitle, setCurrentSubtitle] = useState(-1);
+  const [picker, setPicker] = useState(null); // 'audio' | 'subs' | null
+
+  const switchAudio = useCallback((trackIndex) => {
+    const hls = hlsRef.current;
+    if (hls) hls.audioTrack = trackIndex;
+    setCurrentAudio(trackIndex);
+    setPicker(null);
+    resetHideTimer();
+  }, [resetHideTimer]);
+
+  const switchSubtitle = useCallback((trackIndex) => {
+    const hls = hlsRef.current;
+    const v = videoRef.current;
+    if (trackIndex === -1) {
+      if (hls) hls.subtitleTrack = -1;
+      if (v) Array.from(v.textTracks || []).forEach(t => { t.mode = 'hidden'; });
+    } else if (hls) {
+      hls.subtitleTrack = trackIndex;
+    } else if (v) {
+      Array.from(v.textTracks || []).forEach((t, i) => { t.mode = i === trackIndex ? 'showing' : 'hidden'; });
+    }
+    setCurrentSubtitle(trackIndex);
+    setPicker(null);
+    resetHideTimer();
+  }, [resetHideTimer]);
 
   const cycleFit = () => {
     setFitIndex((i) => (i + 1) % FIT_MODES.length);
@@ -134,7 +165,19 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
       hlsRef.current = hls;
       hls.loadSource(blobUrl);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setAudioTracks(hls.audioTracks.map((t, i) => ({ index: i, label: t.name || t.lang || `Track ${i + 1}` })));
+        setCurrentAudio(hls.audioTrack || 0);
+        setSubtitleTracks(hls.subtitleTracks.map((t, i) => ({ index: i, label: t.name || t.lang || `Sub ${i + 1}` })));
+        // Native text tracks (e.g. embedded CEA-608) for non-HLS sources
+        if (!hls.audioTracks.length || !hls.subtitleTracks.length) {
+          const tracks = Array.from(video.textTracks || []);
+          if (!hls.subtitleTracks.length && tracks.length) {
+            setSubtitleTracks(tracks.map((t, i) => ({ index: i, label: t.label || t.language || `Sub ${i + 1}` })));
+          }
+        }
+        video.play().catch(() => {});
+      });
     }
 
     start();
@@ -247,6 +290,58 @@ export default function IptvDetailPlayer({ url, title, onClose }) {
           </span>
 
           <div className="flex-1" />
+
+          {/* Audio track picker */}
+          {audioTracks.length > 1 && (
+            <div className="relative">
+              <button
+                onClick={() => setPicker(p => p === 'audio' ? null : 'audio')}
+                className="text-white/70 hover:text-white transition-colors"
+                title="Audio Track"
+              >
+                <AudioLines className="w-5 h-5" />
+              </button>
+              {picker === 'audio' && (
+                <div className="absolute bottom-10 right-0 bg-black/90 border border-white/20 rounded-xl overflow-hidden shadow-2xl min-w-[150px]">
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest px-3 pt-2 pb-1">Audio</p>
+                  {audioTracks.map(t => (
+                    <button key={t.index} onClick={() => switchAudio(t.index)}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${currentAudio === t.index ? 'text-primary font-semibold' : 'text-white'}`}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Subtitle picker */}
+          {subtitleTracks.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setPicker(p => p === 'subs' ? null : 'subs')}
+                className={`transition-colors ${currentSubtitle >= 0 ? 'text-primary' : 'text-white/70 hover:text-white'}`}
+                title="Subtitles"
+              >
+                <Subtitles className="w-5 h-5" />
+              </button>
+              {picker === 'subs' && (
+                <div className="absolute bottom-10 right-0 bg-black/90 border border-white/20 rounded-xl overflow-hidden shadow-2xl min-w-[150px]">
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest px-3 pt-2 pb-1">Subtitles</p>
+                  <button onClick={() => switchSubtitle(-1)}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${currentSubtitle === -1 ? 'text-primary font-semibold' : 'text-white'}`}>
+                    Off
+                  </button>
+                  {subtitleTracks.map(t => (
+                    <button key={t.index} onClick={() => switchSubtitle(t.index)}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-white/10 transition-colors ${currentSubtitle === t.index ? 'text-primary font-semibold' : 'text-white'}`}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <button onClick={cycleFit} className="flex items-center gap-1 text-white/70 hover:text-white transition-colors">
             <Ratio className="w-5 h-5" />
