@@ -7,6 +7,7 @@ import HeroBanner from '../components/media/HeroBanner';
 import HomeSearchBar from '../components/media/HomeSearchBar';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import LibraryCategories from '../components/dashboard/LibraryCategories';
+import StudioLogos from '../components/media/StudioLogos';
 import ServerStatusStrip from '../components/dashboard/ServerStatusStrip';
 import ServerSection from '../components/media/ServerSection';
 import EmbyLibraryViews from '../components/media/EmbyLibraryViews';
@@ -96,6 +97,8 @@ export default function Home() {
       <HomeSearchBar />
 
       <HeroBanner featured={featured} />
+
+      <StudioLogos />
 
       <ServerStatusStrip />
 

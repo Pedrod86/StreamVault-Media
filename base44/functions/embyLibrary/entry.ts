@@ -75,6 +75,8 @@ Deno.serve(async (req) => {
     const genreFilter = (body.genre || '').trim();
     // years filter — comma-separated list of years (e.g. for a decade)
     const yearsFilter = (body.years || '').trim();
+    // studios filter — comma-separated studio/network names (e.g. Netflix)
+    const studiosFilter = (body.studios || '').trim();
 
     const server = await getEmbyServer(base44, body.serverId);
     if (!server) return Response.json({ error: 'No active Emby server found' }, { status: 404 });
@@ -96,13 +98,14 @@ Deno.serve(async (req) => {
 
     let url =
       `${base}/Users/${userId}/Items?IncludeItemTypes=${types}&Recursive=true` +
-      `&Fields=Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaStreams,Height,Width,Tags` +
+      `&Fields=Overview,Genres,Studios,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,ImageTags,BackdropImageTags,MediaStreams,Height,Width,Tags` +
       `&SortBy=${sortField}&SortOrder=${sortOrder}&Limit=${PAGE}&StartIndex=${startIndex}&api_key=${token}`;
 
     if (ids.length) url += `&Ids=${encodeURIComponent(ids.join(','))}`;
     if (searchTerm) url += `&SearchTerm=${encodeURIComponent(searchTerm)}`;
     if (genreFilter) url += `&Genres=${encodeURIComponent(genreFilter)}`;
     if (yearsFilter) url += `&Years=${encodeURIComponent(yearsFilter)}`;
+    if (studiosFilter) url += `&Studios=${encodeURIComponent(studiosFilter)}`;
 
     const json = await doFetch(url);
 
@@ -150,6 +153,7 @@ Deno.serve(async (req) => {
         duration: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
         overview: item.Overview || '',
         genres: item.Genres || [],
+        studios: (item.Studios || []).map(s => s.Name).filter(Boolean),
         contentRating: item.OfficialRating || null,
         posterUrl: item.ImageTags?.Primary ? buildImageUrl(base, item.Id, token, 'Primary') : null,
         backdropUrl: item.BackdropImageTags?.[0] ? buildImageUrl(base, item.Id, token, 'Backdrop') : null,
