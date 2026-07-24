@@ -109,8 +109,8 @@ export default function MediaCard({ media, showProgress, progress, disableNaviga
 
           {/* Type badge */}
           <div className="absolute top-2 left-2 flex flex-col items-start gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider bg-primary/80 backdrop-blur-sm text-primary-foreground px-1.5 py-0.5 rounded">
-              {media.media_type === 'tv_show' ? 'Series' : 'Movie'}
+            <span className={`text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm px-1.5 py-0.5 rounded text-white ${media.media_type === 'tv_show' ? 'bg-purple-500/85' : 'bg-blue-500/85'}`}>
+              {media.media_type === 'tv_show' ? 'TV' : 'Movie'}
             </span>
             {media.resolution && <QualityBadge quality={media.resolution} />}
             {isDownloaded && <DownloadedBadge />}

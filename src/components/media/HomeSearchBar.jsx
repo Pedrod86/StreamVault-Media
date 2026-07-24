@@ -20,7 +20,7 @@ export default function HomeSearchBar() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search movies & shows across your servers..."
+          placeholder="Search movies & TV..."
           className="pl-12 h-12 bg-secondary border-border text-foreground text-base rounded-xl"
         />
       </div>
