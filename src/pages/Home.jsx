@@ -6,6 +6,7 @@ import PullToRefresh from '../components/layout/PullToRefresh';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import StudioCarousel from '../components/media/StudioCarousel';
 import DiscoverRows from '../components/media/DiscoverRows';
+import EmbyStatsBox from '../components/dashboard/EmbyStatsBox';
 
 export default function Home() {
   const queryClient = useQueryClient();
@@ -27,6 +28,12 @@ export default function Home() {
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="pb-20">
         <HomeSearchBar />
+
+        {embyServer && (
+          <div className="mt-4">
+            <EmbyStatsBox serverId={embyServer.id} />
+          </div>
+        )}
 
         {embyServer && (
           <div className="mt-4">
