@@ -105,7 +105,12 @@ Deno.serve(async (req) => {
     if (searchTerm) url += `&SearchTerm=${encodeURIComponent(searchTerm)}`;
     if (genreFilter) url += `&Genres=${encodeURIComponent(genreFilter)}`;
     if (yearsFilter) url += `&Years=${encodeURIComponent(yearsFilter)}`;
-    if (studiosFilter) url += `&Studios=${encodeURIComponent(studiosFilter)}`;
+    // Emby's Studios filter expects a pipe-delimited list of studio names (OR match).
+    // Callers pass a comma-joined brand-alias string, so normalise it here.
+    if (studiosFilter) {
+      const studios = studiosFilter.split(',').map(s => s.trim()).filter(Boolean).join('|');
+      if (studios) url += `&Studios=${encodeURIComponent(studios)}`;
+    }
 
     const json = await doFetch(url);
 
