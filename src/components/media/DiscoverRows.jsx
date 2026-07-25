@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { Skeleton } from '@/components/ui/skeleton';
 import MediaRow from './MediaRow';
 import GenreRow from './GenreRow';
+import EmbyLiveRow from './EmbyLiveRow';
 
 // Score a title for "popular": prefer highly-rated, recent.
 const popularScore = (m) => (m.rating || 0) + (m.year ? (m.year - 1990) / 25 : 0);
@@ -72,7 +73,7 @@ export default function DiscoverRows() {
 
   return (
     <div className="mt-6">
-      <MediaRow title="Popular Movies" items={popularMovies} />
+      <EmbyLiveRow title="Popular Movies" itemType="Movie" />
       <GenreRow title="Movie Genres" entries={movieGenres} onClick={openGenre('Movie')} />
       <MediaRow title="Popular TV Shows" items={popularShows} />
       <GenreRow title="TV Show Genres" entries={tvGenres} onClick={openGenre('Series')} />
