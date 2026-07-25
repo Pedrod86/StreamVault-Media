@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { LayoutGrid, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
@@ -39,14 +40,18 @@ function GenreTile({ genre, index, onSelect }) {
 }
 
 export default function Genres() {
-  const [activeGenre, setActiveGenre] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeGenre = searchParams.get('genre') || '';
+  const itemType = searchParams.get('type') || ''; // '' | 'Movie' | 'Series'
   const [page, setPage] = useState(0);
 
-  // All genres across movies + series.
+  useEffect(() => { setPage(0); }, [activeGenre, itemType]);
+
+  // All genres for the currently-selected media type.
   const { data: genres = [], isLoading: loadingGenres } = useQuery({
-    queryKey: ['allEmbyGenres'],
+    queryKey: ['allEmbyGenres', itemType],
     queryFn: async () => {
-      const res = await base44.functions.invoke('embyGenres', { itemType: '' });
+      const res = await base44.functions.invoke('embyGenres', { itemType });
       if (res.data?.error) throw new Error(res.data.error);
       return res.data?.genres || [];
     },
@@ -56,12 +61,12 @@ export default function Genres() {
 
   // Titles within the selected genre.
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['embyGenreTitles', activeGenre, page],
+    queryKey: ['embyGenreTitles', activeGenre, itemType, page],
     queryFn: async () => {
       const res = await base44.functions.invoke('embyLibrary', {
         startIndex: page * PAGE_SIZE,
         pageSize: PAGE_SIZE,
-        itemType: '',
+        itemType,
         genre: activeGenre,
         sortBy: 'SortName',
       });
@@ -76,9 +81,16 @@ export default function Genres() {
   });
 
   const openGenre = (g) => {
-    setActiveGenre(g);
-    setPage(0);
+    const next = new URLSearchParams(searchParams);
+    if (g) next.set('genre', g); else next.delete('genre');
+    setSearchParams(next, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const clearGenre = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('genre');
+    setSearchParams(next, { replace: true });
   };
 
   const items = data?.items || [];
@@ -93,7 +105,7 @@ export default function Genres() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setActiveGenre('')}
+            onClick={clearGenre}
             className="gap-1.5 -ml-2"
           >
             <ChevronLeft className="w-4 h-4" /> All Genres

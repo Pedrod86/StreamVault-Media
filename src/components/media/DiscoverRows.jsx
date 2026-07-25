@@ -47,9 +47,10 @@ export default function DiscoverRows() {
     };
   }, [media]);
 
-  const openGenre = (genre, items) => {
-    // Reuse the category view which renders whatever items are passed in.
-    navigate('/category', { state: { title: genre, items } });
+  const openGenre = (type) => (genre) => {
+    const params = new URLSearchParams({ genre });
+    if (type) params.set('type', type);
+    navigate(`/genres?${params.toString()}`);
   };
 
   if (isLoading) {
@@ -72,9 +73,9 @@ export default function DiscoverRows() {
   return (
     <div className="mt-6">
       <MediaRow title="Popular Movies" items={popularMovies} />
-      <GenreRow title="Movie Genres" entries={movieGenres} onClick={openGenre} />
+      <GenreRow title="Movie Genres" entries={movieGenres} onClick={openGenre('Movie')} />
       <MediaRow title="Popular TV Shows" items={popularShows} />
-      <GenreRow title="TV Show Genres" entries={tvGenres} onClick={openGenre} />
+      <GenreRow title="TV Show Genres" entries={tvGenres} onClick={openGenre('Series')} />
     </div>
   );
 }
