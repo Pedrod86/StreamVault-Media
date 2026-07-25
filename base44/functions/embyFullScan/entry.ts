@@ -162,6 +162,23 @@ Deno.serve(async (req) => {
       status: finished ? 'complete' : 'running',
     }));
 
+    // Fire a Discord alert once the entire library scan has finished — this is the
+    // point where all pages have been pulled and the DB catalog is fully updated.
+    if (finished) {
+      sr.functions.invoke('discordSyncAlert', {
+        data: {
+          server_name: server.server_name || 'Emby',
+          server_type: 'emby',
+          status: 'success',
+          items_fetched: totalFetched,
+          items_created: totalCreated,
+          items_updated: 0,
+          duration_seconds: 0,
+          total_in_db: total,
+        }
+      }).catch(() => {});
+    }
+
     return Response.json({
       done: finished,
       start_index: startIndex,
