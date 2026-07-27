@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ArrowLeft, Loader2, Server, Key, User, Globe, CheckCircle2, ExternalLink, Plus, Trash2, Wifi, LayoutDashboard, Pencil, Cloud } from 'lucide-react';
+import { ArrowLeft, Loader2, Server, Key, User, Globe, CheckCircle2, ExternalLink, Plus, Trash2, Wifi, LayoutDashboard, Pencil, Cloud, CloudDownload } from 'lucide-react';
 import EditServerDialog from '@/components/server/EditServerDialog';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,6 +15,7 @@ import FullSyncButton from '@/components/server/FullSyncButton';
 import ServerHealthBadge from '@/components/server/ServerHealthBadge';
 import XtreamForm, { XTREAM } from '@/components/server/XtreamForm';
 import TorBoxForm, { TORBOX } from '@/components/server/TorBoxForm';
+import AllDebridForm, { ALLDEBRID } from '@/components/server/AllDebridForm';
 import IptvConnectionTester from '@/components/server/IptvConnectionTester';
 import LocalUrlField from '@/components/server/LocalUrlField';
 import ConnectionRouteBadge from '@/components/server/ConnectionRouteBadge';
@@ -137,6 +138,16 @@ export default function ConnectServer() {
     );
   }
 
+  if (adding && selectedServer === 'alldebrid') {
+    return (
+      <AllDebridForm
+        onBack={() => setSelectedServer(null)}
+        onSave={(data) => saveMutation.mutate({ ...data, server_type: 'alldebrid' })}
+        isSaving={saveMutation.isPending}
+      />
+    );
+  }
+
   if (adding && selectedServer === 'trakt') {
     return (
       <TraktForm
@@ -200,7 +211,7 @@ export default function ConnectServer() {
           </div>
         ) : (
           <div className="space-y-3">
-            {mediaServers.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM, TORBOX]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
+            {mediaServers.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM, TORBOX, ALLDEBRID]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
           </div>
         )}
       </div>
@@ -228,7 +239,7 @@ export default function ConnectServer() {
           </motion.button>
         ) : (
           <div className="space-y-3">
-            {traktConnections.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM, TORBOX]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
+            {traktConnections.map((srv) => <ServerCard key={srv.id} srv={srv} allMeta={[...SERVERS, TRAKT, XTREAM, TORBOX, ALLDEBRID]} onDelete={() => deleteMutation.mutate(srv.id)} deleting={deleteMutation.isPending} />)}
             <Button variant="outline" size="sm" className="border-border rounded-lg gap-1.5 text-muted-foreground" onClick={() => { setSelectedServer('trakt'); setAdding(true); }}>
               <Plus className="w-3.5 h-3.5" /> Add Another Trakt Account
             </Button>
@@ -261,6 +272,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
   const isTrakt = srv.server_type === 'trakt';
   const isXtream = srv.server_type === 'xtream';
   const isTorbox = srv.server_type === 'torbox';
+  const isAlldebrid = srv.server_type === 'alldebrid';
   const [editing, setEditing] = useState(false);
   return (
     <motion.div
@@ -269,7 +281,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
       className={`flex flex-wrap items-center gap-4 p-4 rounded-xl border ${meta.bg}`}
     >
       <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shadow-md shrink-0`}>
-        {isTrakt ? <ActivityIcon /> : isXtream ? <IptvIcon /> : isTorbox ? <Cloud className="w-5 h-5 text-white" /> : <Server className="w-5 h-5 text-white" />}
+        {isTrakt ? <ActivityIcon /> : isXtream ? <IptvIcon /> : isTorbox ? <Cloud className="w-5 h-5 text-white" /> : isAlldebrid ? <CloudDownload className="w-5 h-5 text-white" /> : <Server className="w-5 h-5 text-white" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className={`font-heading font-semibold ${meta.text}`}>{srv.server_name || `${meta.name}`}</p>
@@ -319,7 +331,7 @@ function ServerCard({ srv, allMeta, onDelete, deleting }) {
 }
 
 function ServerPicker({ onSelect, onBack }) {
-  const allOptions = [...SERVERS, TRAKT, TORBOX];
+  const allOptions = [...SERVERS, TRAKT, TORBOX, ALLDEBRID];
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-lg">
@@ -348,18 +360,33 @@ function ServerPicker({ onSelect, onBack }) {
         </motion.button>
 
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Cloud Debrid</p>
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onSelect('torbox')}
-          className={`w-full flex items-center gap-4 p-5 rounded-xl border ${TORBOX.bg} transition-all text-left mb-6`}
-        >
-          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${TORBOX.color} flex items-center justify-center shadow-lg`}>
-            <Cloud className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <p className={`font-heading font-bold ${TORBOX.text}`}>{TORBOX.name}</p>
-            <p className="text-muted-foreground text-sm">{TORBOX.description}</p>
-          </div>
-          <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
-        </motion.button>
+        <div className="space-y-3 mb-6">
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onSelect('torbox')}
+            className={`w-full flex items-center gap-4 p-5 rounded-xl border ${TORBOX.bg} transition-all text-left`}
+          >
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${TORBOX.color} flex items-center justify-center shadow-lg`}>
+              <Cloud className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className={`font-heading font-bold ${TORBOX.text}`}>{TORBOX.name}</p>
+              <p className="text-muted-foreground text-sm">{TORBOX.description}</p>
+            </div>
+            <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+          </motion.button>
+
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onSelect('alldebrid')}
+            className={`w-full flex items-center gap-4 p-5 rounded-xl border ${ALLDEBRID.bg} transition-all text-left`}
+          >
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${ALLDEBRID.color} flex items-center justify-center shadow-lg`}>
+              <CloudDownload className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className={`font-heading font-bold ${ALLDEBRID.text}`}>{ALLDEBRID.name}</p>
+              <p className="text-muted-foreground text-sm">{ALLDEBRID.description}</p>
+            </div>
+            <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+          </motion.button>
+        </div>
 
         <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Media Servers</p>
         <div className="space-y-3 mb-6">

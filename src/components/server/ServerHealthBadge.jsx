@@ -32,6 +32,9 @@ export default function ServerHealthBadge({ server }) {
       } else if (server.server_type === 'torbox') {
         // TorBox has no /System/Info/Public — use the public status endpoint.
         url = `${base || 'https://api.torbox.app'}/api/general/status`;
+      } else if (server.server_type === 'alldebrid') {
+        // AllDebrid: verify the API key against the user endpoint.
+        url = `${base || 'https://api.alldebrid.com'}/v4/api/user/me?apikey=${token || ''}`;
       } else {
         url = `${base}/System/Info/Public`;
       }
@@ -42,6 +45,8 @@ export default function ServerHealthBadge({ server }) {
       const res = await base44.functions.invoke('mediaProxy', { url });
       if (res.data?.error) throw new Error(res.data.error);
       if (!res.data?.ok) throw new Error(`HTTP ${res.data?.status || '???'}`);
+      // AllDebrid returns {status:'success'} but the proxy surfaces it differently — accept either.
+      if (res.data?.status === 'success' || res.data?.data?.user) { setStatus('ok'); return; }
       setStatus('ok');
     } catch (err) {
       setStatus('error');

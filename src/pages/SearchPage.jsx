@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDebounce } from '../hooks/useDebounce';
 import EmbyBrowseGrid from '../components/media/EmbyBrowseGrid';
+import DebridFallback from '../components/search/DebridFallback';
 
 const PAGE_SIZE = 48;
 
@@ -83,6 +84,13 @@ export default function SearchPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+          )}
+
+          {/* Debrid fallback — surfaces when a title isn't on your Plex/Emby/Jellyfin servers. */}
+          {total === 0 ? (
+            <DebridFallback query={trimmed} auto />
+          ) : (
+            <DebridFallback query={trimmed} />
           )}
         </>
       ) : (

@@ -10,7 +10,8 @@
         "jellyfin",
         "trakt",
         "xtream",
-        "torbox"
+        "torbox",
+        "alldebrid"
       ],
       "description": "Type of media server or service"
     },
