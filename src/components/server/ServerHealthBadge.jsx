@@ -29,6 +29,9 @@ export default function ServerHealthBadge({ server }) {
         const p = encodeURIComponent(server.password || '');
         // base may include a path prefix like /api — use it directly
         url = `${base}/player_api.php?username=${u}&password=${p}`;
+      } else if (server.server_type === 'torbox') {
+        // TorBox has no /System/Info/Public — use the public status endpoint.
+        url = `${base || 'https://api.torbox.app'}/api/general/status`;
       } else {
         url = `${base}/System/Info/Public`;
       }

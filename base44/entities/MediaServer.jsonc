@@ -9,7 +9,8 @@
         "emby",
         "jellyfin",
         "trakt",
-        "xtream"
+        "xtream",
+        "torbox"
       ],
       "description": "Type of media server or service"
     },

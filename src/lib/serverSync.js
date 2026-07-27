@@ -456,9 +456,25 @@ export async function fetchRecentlyAdded(server) {
     case 'jellyfin': return fetchJellyfinRecentlyAdded(server);
     case 'emby':     return fetchEmbyRecentlyAdded(server);
     case 'xtream':   return fetchXtreamLibrary(server); // Xtream has no "recent" API, fall back to full list
+    case 'torbox':   return fetchTorboxLibrary(server);
     default:
       throw new Error(`Unknown server type "${server.server_type}".`);
   }
+}
+
+async function fetchTorboxLibrary(server) {
+  // TorBox's torrent list is fetched server-side (Bearer auth + CORS) by the
+  // torboxLibrary backend function, then mapped to media items here.
+  const res = await base44.functions.invoke('torboxLibrary', { serverId: server.id, bypass_cache: false });
+  if (res.data?.error) throw new Error(res.data.error);
+  const items = res.data?.items || [];
+  return items.filter(t => t.streamUrl).map(t => ({
+    title: t.title,
+    media_type: t.mediaType,
+    video_url: t.streamUrl,
+    description: `Synced from TorBox${t.sizeLabel ? ` · ${t.sizeLabel}` : ''}`,
+    tags: ['torbox', `torbox:${t.torrentId}`],
+  }));
 }
 
 export async function fetchServerLibrary(server, onProgress) {
@@ -472,6 +488,7 @@ export async function fetchServerLibrary(server, onProgress) {
     case 'jellyfin': return fetchJellyfinLibrary(server, onProgress);
     case 'emby':     return fetchEmbyLibrary(server, onProgress);
     case 'xtream':   return fetchXtreamLibrary(server);
+    case 'torbox':   return fetchTorboxLibrary(server);
     default:
       throw new Error(`Unknown server type "${server.server_type}". Please reconnect this server.`);
   }
