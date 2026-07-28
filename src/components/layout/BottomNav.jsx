@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Film, Tv, Radio, Download, LogIn } from 'lucide-react';
+import { Home, Film, Tv, Radio, LayoutGrid, LogIn } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const TABS = [
@@ -8,7 +8,7 @@ const TABS = [
   { to: '/movies', label: 'Movies', icon: Film },
   { to: '/shows', label: 'TV Shows', icon: Tv },
   { to: '/iptv', label: 'Live TV', icon: Radio },
-  { to: '/downloads', label: 'Downloads', icon: Download },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
 ];
 
 const TAB_PATHS = new Set(TABS.map(t => t.to));
