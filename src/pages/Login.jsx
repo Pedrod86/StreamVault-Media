@@ -22,12 +22,22 @@ export default function Login() {
   const containerRef = useRef(null);
   const navigate = useNavigate();
 
-  // TV: focus the email field once the form mounts (no splash gate —
-  // some Android TV WebViews never fire the timeout, hiding the form forever).
+  // TV: show a brief splash logo, then fade it out and reveal the login form.
+  // The dismissal is purely setTimeout-driven — it doesn't depend on focus or
+  // CSS events — so the login boxes can never get stuck behind the splash on
+  // Android TV WebViews.
+  const [splashFading, setSplashFading] = useState(false);
+  const [splashGone, setSplashGone] = useState(false);
   useEffect(() => {
     if (!isTV) return;
-    const t = setTimeout(() => emailRef.current?.focus(), 200);
-    return () => clearTimeout(t);
+    setSplashFading(false);
+    setSplashGone(false);
+    const t1 = setTimeout(() => setSplashFading(true), 1500);
+    const t2 = setTimeout(() => {
+      setSplashGone(true);
+      emailRef.current?.focus();
+    }, 2050);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [isTV]);
 
   // TV: let the remote's D-pad Up / Down arrows move focus between the
@@ -127,6 +137,22 @@ export default function Login() {
         className="w-full relative bg-background"
         style={{ minHeight: '100vh', minHeight: '100dvh', padding: '64px 48px 80px' }}
       >
+        {!splashGone && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background pointer-events-none"
+            style={{ opacity: splashFading ? 0 : 1, transition: 'opacity 600ms ease-out' }}
+          >
+            <img
+              src="https://media.base44.com/images/public/69fe35055df988e0955e5c11/6a6f0ca7a_generated_image.png"
+              alt="StreamVault"
+              className="w-28 h-28 rounded-3xl object-cover ring-1 ring-primary/20 animate-logo-flash"
+            />
+            <span className="font-heading font-bold text-4xl text-foreground mt-5 tracking-tight">
+              StreamVault
+            </span>
+          </div>
+        )}
+
 
         <div style={{ width: '100%', maxWidth: 460, padding: '24px', backgroundColor: 'hsl(217 33% 17%)' }}
           className="rounded-2xl border-2 border-border shadow-2xl mx-auto shrink-0">
