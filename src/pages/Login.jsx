@@ -96,18 +96,9 @@ export default function Login() {
   if (tvLayout) {
     return (
       <div
-        className="w-full relative flex flex-col items-center justify-center overflow-hidden"
-        style={{ minHeight: '100vh', minHeight: '100dvh', overflowY: 'auto', padding: '48px 48px 48px' }}
+        className="w-full relative bg-background"
+        style={{ minHeight: '100vh', minHeight: '100dvh', padding: '64px 48px 80px' }}
       >
-        {/* ── Solid dark background (no blur — Android TV WebViews don't support backdrop-filter) ── */}
-        <div className="absolute inset-0 -z-10 bg-background">
-          <img
-            src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2400&auto=format&fit=crop"
-            alt=""
-            className="w-full h-full object-cover opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
-        </div>
 
         <div style={{ width: '100%', maxWidth: 460, padding: '24px', backgroundColor: 'hsl(217 33% 17%)' }}
           className="rounded-2xl border-2 border-border shadow-2xl mx-auto shrink-0">
@@ -219,22 +210,11 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex items-center justify-center px-4 py-10 overflow-hidden"
-      style={{ minHeight: '100vh', minHeight: '100dvh' }}>
-      {/* ── Cinematic full-screen background ── */}
-      <div className="absolute inset-0 -z-10">
-        <img
-          src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2400&auto=format&fit=crop"
-          alt=""
-          className="w-full h-full object-cover scale-105 animate-[cine-pan_30s_ease-in-out_infinite_alternate]"
-        />
-        {/* Cinematic gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/20" />
-        <div className="absolute inset-0 bg-background/40" />
-      </div>
+    <div className="relative bg-background w-full"
+      style={{ minHeight: '100vh', minHeight: '100dvh', padding: '40px 16px 64px' }}>
 
-      <div className="w-full max-w-md">
+
+      <div className="w-full max-w-md mx-auto">
         {/* ── Animated logo ── */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4 animate-logo-flash">
@@ -246,8 +226,8 @@ export default function Login() {
 
         {/* ── Login card — solid fill so it stays visible on Android WebViews that
              don't support backdrop-filter (blur is a progressive enhancement) ── */}
-        <div className="rounded-2xl border border-white/10 backdrop-blur-2xl shadow-2xl p-6 sm:p-8"
-          style={{ backgroundColor: 'hsl(217 33% 17% / 0.97)', boxShadow: 'inset 0 1px 0 hsl(0 0% 100% / 0.08), 0 24px 60px hsl(240 40% 2% / 0.6)' }}>
+        <div className="rounded-2xl border-2 border-border shadow-2xl p-6 sm:p-8"
+          style={{ backgroundColor: 'hsl(217 33% 17%)' }}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-sm text-destructive">
