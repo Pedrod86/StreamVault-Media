@@ -56,15 +56,6 @@ const AuthenticatedApp = () => {
   // Auto-refetch stale data when the network reconnects
   useReconnectRefetch();
 
-  // Handle auth_required in an effect to avoid calling navigate during render
-  React.useEffect(() => {
-    if (authError?.type === 'auth_required') {
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-    }
-  }, [authError]);
-
   // On auth/login pages, never block with a spinner — always let them render
   const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(window.location.pathname);
 
@@ -76,7 +67,9 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      return null; // handled by useEffect above
+      // Render login via in-SPA navigation. A hard window.location redirect can fail
+      // silently inside Android TV WebViews, leaving a permanent blank screen.
+      return <Navigate to="/login" replace />;
     }
   }
 
