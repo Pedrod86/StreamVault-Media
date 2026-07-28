@@ -5,6 +5,7 @@ import HomeSearchBar from '../components/media/HomeSearchBar';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
 import StudioCarousel from '../components/media/StudioCarousel';
+import DebridHomeRows from '../components/media/DebridHomeRows';
 import DiscoverRows from '../components/media/DiscoverRows';
 import EmbyStatsBox from '../components/dashboard/EmbyStatsBox';
 
@@ -40,6 +41,8 @@ export default function Home() {
             <EmbyContinueWatching serverId={embyServer.id} />
           </div>
         )}
+
+        <DebridHomeRows />
 
         <StudioCarousel />
 
