@@ -19,6 +19,7 @@ export default function Login() {
   const isTV = useTvDevice();
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const containerRef = useRef(null);
   const navigate = useNavigate();
 
   // TV: focus the email field once the form mounts (no splash gate —
@@ -27,6 +28,32 @@ export default function Login() {
     if (!isTV) return;
     const t = setTimeout(() => emailRef.current?.focus(), 200);
     return () => clearTimeout(t);
+  }, [isTV]);
+
+  // TV: let the remote's D-pad Up / Down arrows move focus between the
+  // focusable elements in document order. The WebView emits ArrowUp /
+  // ArrowDown key events but does not move focus between inputs, so without
+  // this handler the user is stuck on whichever field received initial focus.
+  useEffect(() => {
+    if (!isTV) return;
+    const handler = (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const root = containerRef.current;
+      if (!root) return;
+      const focusables = Array.from(
+        root.querySelectorAll('button, [href], input, select, textarea, [tabindex]')
+      ).filter(el => el.getAttribute('tabindex') !== '-1' && !el.disabled && el.offsetParent !== null);
+      const idx = focusables.indexOf(document.activeElement);
+      if (idx === -1) return;
+      const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+      if (next >= 0 && next < focusables.length) {
+        e.preventDefault();
+        focusables[next].focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [isTV]);
 
   const handleSubmit = async (e) => {
@@ -96,6 +123,7 @@ export default function Login() {
   if (tvLayout) {
     return (
       <div
+        ref={containerRef}
         className="w-full relative bg-background"
         style={{ minHeight: '100vh', minHeight: '100dvh', padding: '64px 48px 80px' }}
       >
