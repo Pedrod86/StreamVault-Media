@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import HomeSearchBar from '../components/media/HomeSearchBar';
 import PullToRefresh from '../components/layout/PullToRefresh';
 import EmbyContinueWatching from '../components/media/EmbyContinueWatching';
-import HomeGenreTiles from '../components/media/HomeGenreTiles';
 import StudioCarousel from '../components/media/StudioCarousel';
 import DebridHomeRows from '../components/media/DebridHomeRows';
 import DiscoverRows from '../components/media/DiscoverRows';
@@ -40,12 +39,6 @@ export default function Home() {
         {embyServer && (
           <div className="mt-4">
             <EmbyContinueWatching serverId={embyServer.id} />
-          </div>
-        )}
-
-        {embyServer && (
-          <div className="mt-6">
-            <HomeGenreTiles serverId={embyServer.id} />
           </div>
         )}
 
