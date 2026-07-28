@@ -35,6 +35,9 @@ export default function ServerHealthBadge({ server }) {
       } else if (server.server_type === 'alldebrid') {
         // AllDebrid: verify the API key against the user endpoint.
         url = `${base || 'https://api.alldebrid.com'}/v4/api/user/me?apikey=${token || ''}`;
+      } else if (server.server_type === 'premiumize') {
+        // Premiumize: verify the API key against the account-info endpoint.
+        url = `${base || 'https://premiumize.me'}/api/account/info?apikey=${token || ''}`;
       } else {
         url = `${base}/System/Info/Public`;
       }

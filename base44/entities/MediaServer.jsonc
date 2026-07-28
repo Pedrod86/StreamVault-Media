@@ -11,7 +11,8 @@
         "trakt",
         "xtream",
         "torbox",
-        "alldebrid"
+        "alldebrid",
+        "premiumize"
       ],
       "description": "Type of media server or service"
     },
