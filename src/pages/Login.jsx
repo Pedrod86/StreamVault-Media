@@ -17,19 +17,15 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const isTV = useTvDevice();
-  // On TV: show the logo splash first, then reveal the login box.
-  const [tvIntroDone, setTvIntroDone] = useState(false);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const navigate = useNavigate();
 
-  // TV intro: flash the logo, then reveal the login form and focus email.
+  // TV: focus the email field once the form mounts (no splash gate —
+  // some Android TV WebViews never fire the timeout, hiding the form forever).
   useEffect(() => {
     if (!isTV) return;
-    const t = setTimeout(() => {
-      setTvIntroDone(true);
-      setTimeout(() => emailRef.current?.focus(), 100);
-    }, 1600);
+    const t = setTimeout(() => emailRef.current?.focus(), 200);
     return () => clearTimeout(t);
   }, [isTV]);
 
@@ -113,23 +109,8 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/90 to-background/70" />
         </div>
 
-        {/* ── Logo splash: flashes up, then disappears to reveal the login box ── */}
-        {!tvIntroDone && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4 animate-logo-flash">
-              <img
-                src="https://media.base44.com/images/public/69fe35055df988e0955e5c11/6a6f0ca7a_generated_image.png"
-                alt="StreamVault"
-                className="w-24 h-24 rounded-2xl object-cover ring-2 ring-primary/40"
-              />
-              <span className="font-heading font-bold text-3xl text-foreground">StreamVault</span>
-            </div>
-          </div>
-        )}
-
-        {tvIntroDone && (
         <div style={{ width: '100%', maxWidth: 460, padding: '24px', backgroundColor: 'hsl(217 33% 17%)' }}
-          className="rounded-2xl border border-border shadow-2xl mx-auto shrink-0">
+          className="rounded-2xl border-2 border-border shadow-2xl mx-auto shrink-0">
           <div className="text-center mb-5">
             <div className="flex items-center justify-center gap-2 mb-4">
               <img
@@ -162,7 +143,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onInput={(e) => setEmail(e.target.value)}
-                className="bg-input border-border h-12 text-base px-4 focus:ring-2 focus:ring-primary tv-focusable"
+                className="bg-background border-2 border-border h-12 text-base px-4 focus:ring-2 focus:ring-primary tv-focusable"
                 tabIndex={1}
                 autoComplete="email"
                 required
@@ -181,7 +162,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onInput={(e) => setPassword(e.target.value)}
-                  className="bg-input border-border h-12 text-base px-4 pr-12 focus:ring-2 focus:ring-primary tv-focusable"
+                  className="bg-background border-2 border-border h-12 text-base px-4 pr-12 focus:ring-2 focus:ring-primary tv-focusable"
                   tabIndex={2}
                   autoComplete="current-password"
                   required
@@ -233,7 +214,6 @@ export default function Login() {
             Continue with Google
           </Button>
         </div>
-        )}
       </div>
     );
   }
@@ -285,7 +265,7 @@ export default function Login() {
                 spellCheck={false}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 bg-secondary border-white/10 h-11"
+                className="mt-1 bg-background border-2 border-border h-11"
                 autoComplete="email"
                 required
               />
@@ -298,7 +278,7 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 bg-secondary border-white/10 h-11 pr-11"
+                  className="mt-1 bg-background border-2 border-border h-11 pr-11"
                   autoComplete="current-password"
                   required
                 />
