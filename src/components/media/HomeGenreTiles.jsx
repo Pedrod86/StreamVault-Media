@@ -42,7 +42,7 @@ export default function HomeGenreTiles({ serverId } = {}) {
   return (
     <div className="mt-6">
       <GenreRow
-        title="Genres"
+        title="Movies Genres"
         entries={entries}
         onClick={(genre) => navigate(`/genres?genre=${encodeURIComponent(genre)}`)}
       />
