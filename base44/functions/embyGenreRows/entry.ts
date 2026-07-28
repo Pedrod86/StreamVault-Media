@@ -118,6 +118,13 @@ Deno.serve(async (req) => {
     const server = await getEmbyServer(base44, body?.serverId);
     if (!server) return Response.json({ rows: [] });
 
+    // Optional body.itemType filters the Emby IncludeItemTypes list. Pass
+    // 'Movie' for movies-only rows or 'Series' for TV-show-only rows; omit to
+    // keep the default mixed (Movie,Series) behaviour.
+    const itemType = body?.itemType === 'Movie' || body?.itemType === 'Series'
+      ? body.itemType
+      : 'Movie,Series';
+
     const base = server.server_url.replace(/\/$/, '');
     const { token, userId } = await resolveAuth(base, server, base44);
 
@@ -126,7 +133,7 @@ Deno.serve(async (req) => {
     const rows = await Promise.all(GENRES.map(async (genre) => {
       const genreQuery = (GENRE_ALIASES[genre] || [genre]).map(encodeURIComponent).join('|');
       const url =
-        `${base}/Users/${userId}/Items?Recursive=true&IncludeItemTypes=Movie,Series` +
+        `${base}/Users/${userId}/Items?Recursive=true&IncludeItemTypes=${itemType}` +
         `&Genres=${genreQuery}&Fields=${FIELDS}` +
         `&SortBy=CommunityRating,DateCreated&SortOrder=Descending&Limit=${LIMIT}&api_key=${token}`;
       let items = [];

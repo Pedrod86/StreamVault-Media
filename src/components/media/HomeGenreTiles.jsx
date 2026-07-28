@@ -7,12 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Android-TV-style genre tiles on the homepage: a horizontal row of 16:9
 // landscape tiles, each labelled with a genre, that open the Genres page.
-export default function HomeGenreTiles({ serverId } = {}) {
+// `itemType` ('Movie' | 'Series') scopes the tiles to a single media type;
+// `title` is the section heading shown above the tiles.
+export default function HomeGenreTiles({ serverId, itemType, title = 'Movies Genres' } = {}) {
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['embyGenreRows', serverId || 'default'],
-    queryFn: () => base44.functions.invoke('embyGenreRows', serverId ? { serverId } : {}).then(r => r.data),
+    queryKey: ['embyGenreRows', serverId || 'default', itemType || 'mixed'],
+    queryFn: () => base44.functions.invoke('embyGenreRows', serverId ? { serverId, itemType } : { itemType }).then(r => r.data),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -42,9 +44,12 @@ export default function HomeGenreTiles({ serverId } = {}) {
   return (
     <div className="mt-6">
       <GenreRow
-        title="Movies Genres"
+        title={title}
         entries={entries}
-        onClick={(genre) => navigate(`/genres?genre=${encodeURIComponent(genre)}`)}
+        onClick={(genre) => {
+          const typeParam = itemType ? `&type=${encodeURIComponent(itemType)}` : '';
+          navigate(`/genres?genre=${encodeURIComponent(genre)}${typeParam}`);
+        }}
       />
     </div>
   );

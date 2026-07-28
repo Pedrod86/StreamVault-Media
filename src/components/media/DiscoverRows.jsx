@@ -42,7 +42,8 @@ export default function DiscoverRows() {
     <div className="mt-6">
       <EmbyLiveRow title="Popular Movies" itemType="Movie" />
       <MediaRow title="Popular TV Shows" items={popularShows} />
-      <HomeGenreTiles />
+      <HomeGenreTiles itemType="Movie" title="Movies Genres" />
+      <HomeGenreTiles itemType="Series" title="TV show genres" />
     </div>
   );
 }
