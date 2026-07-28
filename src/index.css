@@ -133,21 +133,59 @@ p, h1, h2, h3, h4, h5, h6, span.selectable, .prose, textarea, input {
   user-select: text;
 }
 
-/* ── Android TV / D-pad focus styles ── */
-.tv-focusable:focus {
+/* ── Android TV / D-pad focus states ──
+   Applied app-wide to every focusable element so the remote's D-pad always
+   shows a bold, unmistakable indicator. Opt-in elements get the full "TV"
+   treatment via .tv-focusable; every other focusable element still gets a
+   bright ring + glow. We use :focus (not :focus-visible) because Android TV
+   WebViews don't reliably apply :focus-visible to D-pad-driven focus. */
+.tv-focusable:focus,
+.tv-focusable:focus-visible {
   outline: 3px solid hsl(var(--primary));
-  outline-offset: 2px;
+  outline-offset: 3px;
+  border-radius: 0.75rem;
   background-color: hsl(var(--secondary));
   color: hsl(var(--foreground));
-  scale: 1.04;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.25), 0 0 18px hsl(var(--primary) / 0.55);
+  z-index: 5;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
 }
 
-/* Make all interactive elements focusable via D-pad */
-a:focus-visible,
-button:focus-visible,
-[tabindex]:focus-visible {
+/* Universal D-pad focus indicator — ANY focusable element across the app. */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+summary:focus,
+[tabindex]:focus,
+[role="button"]:focus,
+[role="link"]:focus,
+[role="tab"]:focus,
+[role="option"]:focus,
+[role="menuitem"]:focus,
+[role="menuitemradio"]:focus,
+[role="menuitemcheckbox"]:focus,
+[role="checkbox"]:focus,
+[role="radio"]:focus,
+[role="switch"]:focus,
+[role="combobox"]:focus,
+[data-tv-focusable]:focus {
   outline: 3px solid hsl(var(--primary));
   outline-offset: 2px;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25), 0 0 14px hsl(var(--primary) / 0.45);
+  transform: scale(1.04);
+  z-index: 5;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+/* Focused cards/tiles pop their artwork for clear TV visibility. */
+.tv-focusable:focus img,
+[tabindex]:focus img,
+[role="button"]:focus img {
+  filter: brightness(1.12);
+  transition: filter 0.12s ease-out;
 }
 
 /* ── Cyberpunk theme extras ── */
