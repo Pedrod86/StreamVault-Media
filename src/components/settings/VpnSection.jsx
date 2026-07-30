@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { motion } from 'framer-motion';
-import { Shield, Plus, Trash2, Plug, CheckCircle2, Copy, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Plus, Trash2, Plug, CheckCircle2, Copy, X, ChevronDown, ChevronUp, Download, ClipboardPaste } from 'lucide-react';
 
 const EMPTY = {
   provider_name: '',
@@ -38,6 +38,46 @@ function buildConfig(s) {
   return out;
 }
 
+// Parse a pasted WireGuard .conf into our form fields. Keys are globally unique
+// across [Interface]/[Peer], so a simple key=value match is enough.
+function parseConf(text) {
+  const get = (key) => {
+    const m = text.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+)$`, 'mi'));
+    return m ? m[1].trim() : '';
+  };
+  const endpoint = get('Endpoint');
+  let endpoint_host = endpoint, endpoint_port = 51820;
+  if (endpoint.includes(':')) {
+    const [h, p] = endpoint.split(':');
+    endpoint_host = h;
+    const n = Number(p);
+    if (n) endpoint_port = n;
+  }
+  return {
+    private_key: get('PrivateKey'),
+    address: get('Address'),
+    dns: get('DNS'),
+    public_key: get('PublicKey'),
+    pre_shared_key: get('PresharedKey'),
+    allowed_ips: get('AllowedIPs') || '0.0.0.0/0, ::/0',
+    endpoint_host,
+    endpoint_port,
+  };
+}
+
+function downloadConf(s) {
+  const blob = new Blob([buildConfig(s)], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safe = (s.provider_name || 'wireguard').replace(/[^a-z0-9-_]+/gi, '_');
+  a.href = url;
+  a.download = `${safe}.conf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function Field({ label, children }) {
   return (
     <div>
@@ -54,6 +94,9 @@ export default function VpnSection() {
   const [ errorMsg, setErrorMsg] = useState('');
   const [expanded, setExpanded] = useState(null); // server id whose config is open
   const [copiedId, setCopiedId] = useState(null);
+  const [showImport, setShowImport] = useState(false);
+  const [confText, setConfText] = useState('');
+  const [importMsg, setImportMsg] = useState('');
 
   const { data: servers = [], isLoading } = useQuery({
     queryKey: ['vpnServers'],
@@ -79,6 +122,22 @@ export default function VpnSection() {
   });
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const fillFromConf = () => {
+    if (!confText.trim()) {
+      setImportMsg('Paste a WireGuard config first.');
+      return;
+    }
+    const parsed = parseConf(confText);
+    if (!parsed.endpoint_host) {
+      setImportMsg('Could not find an Endpoint in that config — check the format.');
+      return;
+    }
+    setForm(f => ({ ...f, ...parsed }));
+    setShowImport(false);
+    setConfText('');
+    setImportMsg('');
+  };
 
   const handleConnect = async (id) => {
     // Clear any currently-active server, then mark this one as active.
@@ -170,9 +229,14 @@ export default function VpnSection() {
             {expanded === s.id && (
               <div className="space-y-2 pt-1">
                 <Textarea readOnly value={buildConfig(s)} className="font-mono text-xs bg-background border-border min-h-[160px]" />
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => copyConfig(s)}>
-                  {copiedId === s.id ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy config</>}
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => copyConfig(s)}>
+                    {copiedId === s.id ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => downloadConf(s)}>
+                    <Download className="w-3.5 h-3.5" /> Download .conf
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -182,6 +246,30 @@ export default function VpnSection() {
       {/* Add form */}
       {adding ? (
         <form onSubmit={handleSave} className="space-y-3 rounded-xl border border-border p-4 bg-secondary/30">
+          {/* Paste-import a WireGuard .conf and auto-fill the technical fields */}
+          {!showImport ? (
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10" onClick={() => setShowImport(true)}>
+              <ClipboardPaste className="w-3.5 h-3.5" /> Paste WireGuard config
+            </Button>
+          ) : (
+            <div className="space-y-2 rounded-lg border border-border p-3 bg-background/50">
+              <Textarea
+                value={confText}
+                onChange={e => setConfText(e.target.value)}
+                placeholder={'[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0, ::/0'}
+                className="font-mono text-xs bg-background border-border min-h-[120px]"
+              />
+              {importMsg && <p className="text-xs text-destructive">{importMsg}</p>}
+              <div className="flex gap-2">
+                <Button type="button" size="sm" className="h-8 text-xs bg-primary hover:bg-primary/90 gap-1.5" onClick={fillFromConf}>
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Fill fields from config
+                </Button>
+                <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowImport(false); setConfText(''); setImportMsg(''); }}>Cancel</Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Past config auto-fills Endpoint, keys, Address, DNS and AllowedIPs. You still set a name + your shop credentials below.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Server name *">
               <Input value={form.provider_name} onChange={e => set('provider_name', e.target.value)} className="bg-background border-border h-10" placeholder="London - WireGuard" />
