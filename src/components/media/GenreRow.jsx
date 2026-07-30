@@ -11,6 +11,27 @@ export default function GenreRow({ title, entries, onClick }) {
     scrollRef.current?.scrollBy({ left: dir === 'left' ? -420 : 420, behavior: 'smooth' });
   };
 
+  // Android TV remote: D-pad left/right jumps a full row "page" of tiles at
+  // once instead of stepping one tile per press, so long category lists can
+  // be skimmed quickly.
+  const handleTileKey = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const container = scrollRef.current;
+    if (!container) return;
+    const tiles = Array.from(container.querySelectorAll('[data-genre-tile]'));
+    const idx = tiles.indexOf(e.currentTarget);
+    if (idx === -1) return;
+    const w = e.currentTarget.offsetWidth || 300;
+    const step = Math.max(3, Math.floor(container.clientWidth / (w + 16)));
+    const nextIdx = e.key === 'ArrowRight'
+      ? Math.min(idx + step, tiles.length - 1)
+      : Math.max(0, idx - step);
+    if (nextIdx !== idx) {
+      e.preventDefault();
+      tiles[nextIdx].focus();
+    }
+  };
+
   if (!entries || entries.length === 0) return null;
 
   return (
@@ -34,8 +55,10 @@ export default function GenreRow({ title, entries, onClick }) {
         {entries.map((e) => (
           <button
             key={e.genre}
+            data-genre-tile
             onClick={() => onClick?.(e.genre, e.items)}
-            className="shrink-0 w-[240px] sm:w-[300px] aspect-[16/9] rounded-xl overflow-hidden relative group snap-start focus:outline-none"
+            onKeyDown={handleTileKey}
+            className="shrink-0 w-[240px] sm:w-[300px] aspect-[16/9] rounded-xl overflow-hidden relative group snap-start focus:outline-none tv-focusable"
           >
             {e.posterUrl ? (
               <img
