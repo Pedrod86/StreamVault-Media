@@ -9,7 +9,9 @@ import { motion } from 'framer-motion';
 import { Shield, Plus, Trash2, Plug, CheckCircle2, Copy, X, ChevronDown, ChevronUp, Download, ClipboardPaste } from 'lucide-react';
 
 const EMPTY = {
+  vpn_type: 'wireguard',
   provider_name: '',
+  // WireGuard
   endpoint_host: '',
   endpoint_port: 51820,
   address: '',
@@ -18,12 +20,19 @@ const EMPTY = {
   private_key: '',
   public_key: '',
   pre_shared_key: '',
+  // OpenVPN
+  protocol: 'udp',
+  ovpn_config: '',
+  // shared
   username: '',
   password: '',
 };
 
+const isWireGuardText = (t) => /\[Interface\]/i.test(t) && /\[Peer\]/i.test(t);
+const isOpenVpnText = (t) => /^\s*(client|dev\s|remote\s|proto\s)/im.test(t);
+
 // Build a standard WireGuard .conf from a stored server entry.
-function buildConfig(s) {
+function buildWireguardConf(s) {
   const ep = `${s.endpoint_host}${s.endpoint_port ? `:${s.endpoint_port}` : ''}`;
   let out = '[Interface]\n';
   if (s.private_key) out += `PrivateKey = ${s.private_key}\n`;
@@ -38,40 +47,61 @@ function buildConfig(s) {
   return out;
 }
 
-// Parse a pasted WireGuard .conf into our form fields. Keys are globally unique
-// across [Interface]/[Peer], so a simple key=value match is enough.
+const buildConfig = (s) => s.vpn_type === 'openvpn'
+  ? (s.ovpn_config || '# Paste your .ovpn config into this entry')
+  : buildWireguardConf(s);
+
+// Auto-detect a pasted config (WireGuard .conf or OpenVPN .ovpn) and map it
+// onto our form fields.
 function parseConf(text) {
-  const get = (key) => {
-    const m = text.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+)$`, 'mi'));
-    return m ? m[1].trim() : '';
-  };
-  const endpoint = get('Endpoint');
-  let endpoint_host = endpoint, endpoint_port = 51820;
-  if (endpoint.includes(':')) {
-    const [h, p] = endpoint.split(':');
-    endpoint_host = h;
-    const n = Number(p);
-    if (n) endpoint_port = n;
+  if (isWireGuardText(text)) {
+    const get = (key) => {
+      const m = text.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+)$`, 'mi'));
+      return m ? m[1].trim() : '';
+    };
+    const endpoint = get('Endpoint');
+    let endpoint_host = endpoint, endpoint_port = 51820;
+    if (endpoint.includes(':')) {
+      const [h, p] = endpoint.split(':');
+      endpoint_host = h;
+      const n = Number(p);
+      if (n) endpoint_port = n;
+    }
+    return {
+      vpn_type: 'wireguard',
+      private_key: get('PrivateKey'),
+      address: get('Address'),
+      dns: get('DNS'),
+      public_key: get('PublicKey'),
+      pre_shared_key: get('PresharedKey'),
+      allowed_ips: get('AllowedIPs') || '0.0.0.0/0, ::/0',
+      endpoint_host,
+      endpoint_port,
+      ovpn_config: '',
+    };
   }
-  return {
-    private_key: get('PrivateKey'),
-    address: get('Address'),
-    dns: get('DNS'),
-    public_key: get('PublicKey'),
-    pre_shared_key: get('PresharedKey'),
-    allowed_ips: get('AllowedIPs') || '0.0.0.0/0, ::/0',
-    endpoint_host,
-    endpoint_port,
-  };
+  if (isOpenVpnText(text)) {
+    // Best-effort: pull the first `remote <host> <port> [proto]` line.
+    const remote = text.match(/^\s*remote\s+(\S+)\s+(\d+)(\s+(tcp|udp))?/im);
+    return {
+      vpn_type: 'openvpn',
+      ovpn_config: text.trim(),
+      endpoint_host: remote ? remote[1] : '',
+      endpoint_port: remote ? Number(remote[2]) : 1194,
+      protocol: remote && remote[4] ? remote[4].toLowerCase() : 'udp',
+    };
+  }
+  return null;
 }
 
 function downloadConf(s) {
+  const isOvpn = s.vpn_type === 'openvpn';
   const blob = new Blob([buildConfig(s)], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const safe = (s.provider_name || 'wireguard').replace(/[^a-z0-9-_]+/gi, '_');
+  const safe = (s.provider_name || (isOvpn ? 'openvpn' : 'wireguard')).replace(/[^a-z0-9-_]+/gi, '_');
   a.href = url;
-  a.download = `${safe}.conf`;
+  a.download = `${safe}.${isOvpn ? 'ovpn' : 'conf'}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -91,7 +121,7 @@ export default function VpnSection() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(EMPTY);
   const [adding, setAdding] = useState(false);
-  const [ errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [expanded, setExpanded] = useState(null); // server id whose config is open
   const [copiedId, setCopiedId] = useState(null);
   const [showImport, setShowImport] = useState(false);
@@ -125,12 +155,16 @@ export default function VpnSection() {
 
   const fillFromConf = () => {
     if (!confText.trim()) {
-      setImportMsg('Paste a WireGuard config first.');
+      setImportMsg('Paste a config first.');
       return;
     }
     const parsed = parseConf(confText);
-    if (!parsed.endpoint_host) {
-      setImportMsg('Could not find an Endpoint in that config — check the format.');
+    if (!parsed) {
+      setImportMsg('Unrecognised format — paste a WireGuard .conf or an OpenVPN .ovpn file.');
+      return;
+    }
+    if (parsed.vpn_type === 'wireguard' && !parsed.endpoint_host) {
+      setImportMsg('Could not find an Endpoint in that WireGuard config.');
       return;
     }
     setForm(f => ({ ...f, ...parsed }));
@@ -157,9 +191,13 @@ export default function VpnSection() {
       setErrorMsg('Server name and endpoint host are required.');
       return;
     }
+    if (form.vpn_type === 'openvpn' && !form.ovpn_config?.trim()) {
+      setErrorMsg('OpenVPN requires the .ovpn config — paste it with the import button.');
+      return;
+    }
     createMutation.mutate({
       ...form,
-      endpoint_port: Number(form.endpoint_port) || 51820,
+      endpoint_port: Number(form.endpoint_port) || (form.vpn_type === 'openvpn' ? 1194 : 51820),
     });
   };
 
@@ -171,14 +209,16 @@ export default function VpnSection() {
     } catch {}
   };
 
+  const isOvpn = form.vpn_type === 'openvpn';
+
   return (
     <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }} className="space-y-4 p-5 rounded-xl bg-card border border-border">
       <div className="flex items-center gap-2 mb-1">
         <Shield className="w-4 h-4 text-primary" />
-        <h2 className="font-heading font-semibold text-foreground">VPN (WireGuard)</h2>
+        <h2 className="font-heading font-semibold text-foreground">VPN (WireGuard / OpenVPN)</h2>
       </div>
       <p className="text-xs text-muted-foreground -mt-2">
-        Save your WireGuard credentials and server endpoints. Pick a server and Connect to mark it as your active one. No system tunnel is opened from here — use your device's VPN app with the copied config.
+        Save your WireGuard or OpenVPN credentials and server endpoints. Pick a server and Connect to mark it as your active one. No system tunnel is opened from here — load the exported config into your device's VPN app (WireGuard, OpenVPN Connect, etc.).
       </p>
 
       {/* Active status */}
@@ -204,24 +244,31 @@ export default function VpnSection() {
           <div key={s.id} className={`rounded-xl border p-3 space-y-2 ${s.is_active ? 'border-green-500/50 bg-green-500/5' : 'border-border bg-secondary/40'}`}>
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">{s.provider_name}</p>
+                <p className="text-sm font-medium text-foreground truncate flex items-center gap-2">
+                  {s.provider_name}
+                  <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary">
+                    {s.vpn_type === 'openvpn' ? 'OpenVPN' : 'WireGuard'}
+                  </span>
+                </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {s.endpoint_host}{s.endpoint_port ? `:${s.endpoint_port}` : ''} {s.username ? `· ${s.username}` : ''}
+                  {s.endpoint_host}{s.endpoint_port ? `:${s.endpoint_port}` : ''}
+                  {s.vpn_type === 'openvpn' ? ` ${String(s.protocol || 'udp').toUpperCase()}` : ''}
+                  {s.username ? ` · ${s.username}` : ''}
                 </p>
               </div>
               {s.is_active ? (
-                <Button size="sm" variant="outline" className="h-8 px-3 text-xs border-green-500/50 text-green-400 gap-1.5" onClick={() => handleDisconnect(s.id)}>
+                <Button size="sm" variant="outline" className="h-8 px-3 text-xs border-green-500/50 text-green-400 gap-1.5 shrink-0" onClick={() => handleDisconnect(s.id)}>
                   <X className="w-3.5 h-3.5" /> Disconnect
                 </Button>
               ) : (
-                <Button size="sm" variant="outline" className="h-8 px-3 text-xs border-primary/40 text-primary hover:bg-primary/10 gap-1.5" onClick={() => handleConnect(s.id)}>
+                <Button size="sm" variant="outline" className="h-8 px-3 text-xs border-primary/40 text-primary hover:bg-primary/10 gap-1.5 shrink-0" onClick={() => handleConnect(s.id)}>
                   <Plug className="w-3.5 h-3.5" /> Connect
                 </Button>
               )}
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setExpanded(expanded === s.id ? null : s.id)} aria-label="Toggle config">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0" onClick={() => setExpanded(expanded === s.id ? null : s.id)} aria-label="Toggle config">
                 {expanded === s.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate(s.id)} aria-label="Delete server">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteMutation.mutate(s.id)} aria-label="Delete server">
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -234,7 +281,7 @@ export default function VpnSection() {
                     {copiedId === s.id ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
                   </Button>
                   <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => downloadConf(s)}>
-                    <Download className="w-3.5 h-3.5" /> Download .conf
+                    <Download className="w-3.5 h-3.5" /> Download {s.vpn_type === 'openvpn' ? '.ovpn' : '.conf'}
                   </Button>
                 </div>
               </div>
@@ -246,17 +293,29 @@ export default function VpnSection() {
       {/* Add form */}
       {adding ? (
         <form onSubmit={handleSave} className="space-y-3 rounded-xl border border-border p-4 bg-secondary/30">
-          {/* Paste-import a WireGuard .conf and auto-fill the technical fields */}
+          {/* Protocol toggle */}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" className={`h-9 flex-1 gap-1.5 ${form.vpn_type === 'wireguard' ? 'bg-primary text-primary-foreground' : 'bg-background border-border text-muted-foreground'}`} onClick={() => set('vpn_type', 'wireguard')}>
+              <Shield className="w-3.5 h-3.5" /> WireGuard
+            </Button>
+            <Button type="button" size="sm" className={`h-9 flex-1 gap-1.5 ${form.vpn_type === 'openvpn' ? 'bg-primary text-primary-foreground' : 'bg-background border-border text-muted-foreground'}`} onClick={() => set('vpn_type', 'openvpn')}>
+              <Shield className="w-3.5 h-3.5" /> OpenVPN
+            </Button>
+          </div>
+
+          {/* Paste-import — auto-detects WireGuard .conf or OpenVPN .ovpn */}
           {!showImport ? (
             <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10" onClick={() => setShowImport(true)}>
-              <ClipboardPaste className="w-3.5 h-3.5" /> Paste WireGuard config
+              <ClipboardPaste className="w-3.5 h-3.5" /> Paste {isOvpn ? '.ovpn' : 'WireGuard config'}
             </Button>
           ) : (
             <div className="space-y-2 rounded-lg border border-border p-3 bg-background/50">
               <Textarea
                 value={confText}
                 onChange={e => setConfText(e.target.value)}
-                placeholder={'[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0, ::/0'}
+                placeholder={isOvpn
+                  ? 'client\ndev tun\nproto udp\nremote vpn.example.com 1194\n<noscrupt…\n<ca>…</ca>\n<cert>…</cert>\n<key>…</key>'
+                  : '[Interface]\nPrivateKey = ...\nAddress = ...\nDNS = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0, ::/0'}
                 className="font-mono text-xs bg-background border-border min-h-[120px]"
               />
               {importMsg && <p className="text-xs text-destructive">{importMsg}</p>}
@@ -266,39 +325,70 @@ export default function VpnSection() {
                 </Button>
                 <Button type="button" size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setShowImport(false); setConfText(''); setImportMsg(''); }}>Cancel</Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">Past config auto-fills Endpoint, keys, Address, DNS and AllowedIPs. You still set a name + your shop credentials below.</p>
+              <p className="text-[11px] text-muted-foreground">Auto-detects WireGuard vs OpenVPN and fills the matching fields. You still set a name + your shop credentials below.</p>
             </div>
           )}
 
+          {/* Shared fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Server name *">
-              <Input value={form.provider_name} onChange={e => set('provider_name', e.target.value)} className="bg-background border-border h-10" placeholder="London - WireGuard" />
+              <Input value={form.provider_name} onChange={e => set('provider_name', e.target.value)} className="bg-background border-border h-10" placeholder={isOvpn ? 'London - OpenVPN' : 'London - WireGuard'} />
             </Field>
             <Field label="Endpoint host *">
               <Input value={form.endpoint_host} onChange={e => set('endpoint_host', e.target.value)} className="bg-background border-border h-10" placeholder="vpn.example.com" />
             </Field>
             <Field label="Endpoint port">
-              <Input type="number" value={form.endpoint_port} onChange={e => set('endpoint_port', e.target.value)} className="bg-background border-border h-10" placeholder="51820" />
+              <Input type="number" value={form.endpoint_port} onChange={e => set('endpoint_port', e.target.value)} className="bg-background border-border h-10" placeholder={isOvpn ? '1194' : '51820'} />
             </Field>
-            <Field label="Address (tunnel IP)">
-              <Input value={form.address} onChange={e => set('address', e.target.value)} className="bg-background border-border h-10" placeholder="10.0.0.2/32" />
-            </Field>
-            <Field label="DNS">
-              <Input value={form.dns} onChange={e => set('dns', e.target.value)} className="bg-background border-border h-10" placeholder="1.1.1.1, 1.0.0.1" />
-            </Field>
-            <Field label="AllowedIPs">
-              <Input value={form.allowed_ips} onChange={e => set('allowed_ips', e.target.value)} className="bg-background border-border h-10" />
-            </Field>
-            <Field label="Server public key">
-              <Input value={form.public_key} onChange={e => set('public_key', e.target.value)} className="bg-background border-border h-10" placeholder="Peer PublicKey" />
-            </Field>
-            <Field label="Pre-shared key (optional)">
-              <Input value={form.pre_shared_key} onChange={e => set('pre_shared_key', e.target.value)} className="bg-background border-border h-10" />
-            </Field>
+            {isOvpn ? (
+              <Field label="Protocol">
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" className={`h-10 flex-1 ${form.protocol === 'udp' ? 'bg-primary text-primary-foreground' : 'bg-background border-border text-muted-foreground'}`} onClick={() => set('protocol', 'udp')}>UDP</Button>
+                  <Button type="button" size="sm" className={`h-10 flex-1 ${form.protocol === 'tcp' ? 'bg-primary text-primary-foreground' : 'bg-background border-border text-muted-foreground'}`} onClick={() => set('protocol', 'tcp')}>TCP</Button>
+                </div>
+              </Field>
+            ) : (
+              <Field label="Server public key">
+                <Input value={form.public_key} onChange={e => set('public_key', e.target.value)} className="bg-background border-border h-10" placeholder="Peer PublicKey" />
+              </Field>
+            )}
           </div>
-          <Field label="Your private key">
-            <Input value={form.private_key} onChange={e => set('private_key', e.target.value)} className="bg-background border-border h-10 font-mono" placeholder="Interface PrivateKey" />
-          </Field>
+
+          {/* WireGuard-only fields */}
+          {!isOvpn && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Address (tunnel IP)">
+                  <Input value={form.address} onChange={e => set('address', e.target.value)} className="bg-background border-border h-10" placeholder="10.0.0.2/32" />
+                </Field>
+                <Field label="DNS">
+                  <Input value={form.dns} onChange={e => set('dns', e.target.value)} className="bg-background border-border h-10" placeholder="1.1.1.1, 1.0.0.1" />
+                </Field>
+                <Field label="AllowedIPs">
+                  <Input value={form.allowed_ips} onChange={e => set('allowed_ips', e.target.value)} className="bg-background border-border h-10" />
+                </Field>
+                <Field label="Pre-shared key (optional)">
+                  <Input value={form.pre_shared_key} onChange={e => set('pre_shared_key', e.target.value)} className="bg-background border-border h-10" />
+                </Field>
+              </div>
+              <Field label="Your private key">
+                <Input value={form.private_key} onChange={e => set('private_key', e.target.value)} className="bg-background border-border h-10 font-mono" placeholder="Interface PrivateKey" />
+              </Field>
+            </>
+          )}
+
+          {/* OpenVPN-only: editable .ovpn config */}
+          {isOvpn && (
+            <Field label="OpenVPN .ovpn config *">
+              <Textarea
+                value={form.ovpn_config}
+                onChange={e => set('ovpn_config', e.target.value)}
+                placeholder="Paste your provider's .ovpn file (remote, certs, keys)…"
+                className="font-mono text-xs bg-background border-border min-h-[160px]"
+              />
+            </Field>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Username (shop account)">
               <Input value={form.username} onChange={e => set('username', e.target.value)} className="bg-background border-border h-10" placeholder="Your VPN shop username" autoComplete="off" />

@@ -2,22 +2,40 @@
   "name": "VpnServer",
   "type": "object",
   "properties": {
+    "vpn_type": {
+      "type": "string",
+      "enum": [
+        "wireguard",
+        "openvpn"
+      ],
+      "default": "wireguard",
+      "description": "VPN protocol \u2014 WireGuard or OpenVPN"
+    },
     "provider_name": {
       "type": "string",
       "description": "Display name for this VPN server entry (e.g. 'London - WireGuard')"
     },
     "endpoint_host": {
       "type": "string",
-      "description": "WireGuard endpoint host or IP"
+      "description": "VPN endpoint host or IP (WireGuard endpoint or OpenVPN remote)"
     },
     "endpoint_port": {
       "type": "number",
-      "description": "WireGuard endpoint UDP port",
+      "description": "VPN endpoint UDP/TCP port",
       "default": 51820
+    },
+    "protocol": {
+      "type": "string",
+      "enum": [
+        "udp",
+        "tcp"
+      ],
+      "default": "udp",
+      "description": "OpenVPN transport protocol (ignored for WireGuard)"
     },
     "address": {
       "type": "string",
-      "description": "Your internal tunnel IP (Interface.Address)"
+      "description": "WireGuard internal tunnel IP (Interface.Address)"
     },
     "allowed_ips": {
       "type": "string",
@@ -30,7 +48,7 @@
     },
     "private_key": {
       "type": "string",
-      "description": "Your WireGuard private key (Interface.PrivateKey)"
+      "description": "WireGuard private key (Interface.PrivateKey)"
     },
     "public_key": {
       "type": "string",
@@ -38,7 +56,11 @@
     },
     "pre_shared_key": {
       "type": "string",
-      "description": "Optional pre-shared key (Peer.PresharedKey)"
+      "description": "Optional WireGuard pre-shared key (Peer.PresharedKey)"
+    },
+    "ovpn_config": {
+      "type": "string",
+      "description": "Full OpenVPN .ovpn configuration file contents"
     },
     "username": {
       "type": "string",
