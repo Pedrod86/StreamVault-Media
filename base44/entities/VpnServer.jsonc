@@ -1,0 +1,75 @@
+{
+  "name": "VpnServer",
+  "type": "object",
+  "properties": {
+    "provider_name": {
+      "type": "string",
+      "description": "Display name for this VPN server entry (e.g. 'London - WireGuard')"
+    },
+    "endpoint_host": {
+      "type": "string",
+      "description": "WireGuard endpoint host or IP"
+    },
+    "endpoint_port": {
+      "type": "number",
+      "description": "WireGuard endpoint UDP port",
+      "default": 51820
+    },
+    "address": {
+      "type": "string",
+      "description": "Your internal tunnel IP (Interface.Address)"
+    },
+    "allowed_ips": {
+      "type": "string",
+      "description": "WireGuard Peer AllowedIPs",
+      "default": "0.0.0.0/0, ::/0"
+    },
+    "dns": {
+      "type": "string",
+      "description": "DNS servers for the interface"
+    },
+    "private_key": {
+      "type": "string",
+      "description": "Your WireGuard private key (Interface.PrivateKey)"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Server's WireGuard public key (Peer.PublicKey)"
+    },
+    "pre_shared_key": {
+      "type": "string",
+      "description": "Optional pre-shared key (Peer.PresharedKey)"
+    },
+    "username": {
+      "type": "string",
+      "description": "Account username from your VPN shop"
+    },
+    "password": {
+      "type": "string",
+      "description": "Account password from your VPN shop"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the currently selected server"
+    }
+  },
+  "required": [
+    "provider_name",
+    "endpoint_host"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

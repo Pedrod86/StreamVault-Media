@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 import ApiKeysSection from '@/components/settings/ApiKeysSection';
 import DiscordWebhookSection from '@/components/settings/DiscordWebhookSection';
+import VpnSection from '@/components/settings/VpnSection';
 import VideoAudioSection from '@/components/settings/VideoAudioSection';
 import StorageUsageSection from '@/components/settings/StorageUsageSection';
 import { THEMES, applyTheme } from '@/lib/themes';
@@ -635,6 +636,9 @@ export default function Settings() {
 
       {/* ── Discord Notifications ── */}
       <DiscordWebhookSection />
+
+      {/* ── VPN (WireGuard) ── */}
+      <VpnSection />
 
       {/* ── Check for Updates ── */}
       <CheckForUpdatesSection />
