@@ -8,6 +8,7 @@ import StudioCarousel from '../components/media/StudioCarousel';
 import DebridHomeRows from '../components/media/DebridHomeRows';
 import DiscoverRows from '../components/media/DiscoverRows';
 import EmbyStatsBox from '../components/dashboard/EmbyStatsBox';
+import VpnStatusBadge from '../components/flags/VpnStatusBadge';
 
 export default function Home() {
   const queryClient = useQueryClient();
@@ -29,6 +30,10 @@ export default function Home() {
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="pb-20">
         <HomeSearchBar />
+
+        <div className="px-4 -mt-2 mb-1 flex items-center">
+          <VpnStatusBadge />
+        </div>
 
         {embyServer && (
           <div className="mt-4">
