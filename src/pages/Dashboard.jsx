@@ -8,6 +8,7 @@ import HoursWatchedSummary from '../components/dashboard/HoursWatchedSummary';
 import WatchTimeChart from '../components/dashboard/WatchTimeChart';
 import { LayoutDashboard } from 'lucide-react';
 import VpnBandwidthWidget from '../components/dashboard/VpnBandwidthWidget';
+import ConnectionStatusStrip from '../components/dashboard/ConnectionStatusStrip';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -26,6 +27,7 @@ export default function Dashboard() {
           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-foreground">My Dashboard</h1>
         </div>
 
+        <ConnectionStatusStrip />
         <VpnBandwidthWidget />
         <HoursWatchedSummary />
         <WatchTimeChart />
