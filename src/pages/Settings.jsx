@@ -372,8 +372,11 @@ export default function Settings() {
     }
   }, [settings]);
 
-  // Apply theme on selection change
+  // Apply theme on selection change (skip the first run so the default preset
+  // doesn't briefly override the user's saved theme while settings load)
+  const themeInitRef = useRef(false);
   useEffect(() => {
+    if (!themeInitRef.current) { themeInitRef.current = true; return; }
     const t = THEMES[selectedTheme];
     applyTheme(t.primary, t.accent, !!t.cyberpunk, t.bg, !!t.glass);
   }, [selectedTheme]);

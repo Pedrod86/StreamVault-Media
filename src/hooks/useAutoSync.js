@@ -24,10 +24,17 @@ export function useAutoSync() {
   const settings = settingsList[0];
   const syncMinutes = settings?.sync_interval_minutes ?? 0;
 
+  const mediaServers = servers.filter(s => s.server_type !== 'trakt' && s.is_active !== false);
+  // Depend on a stable key, not the array identity — otherwise every background
+  // refetch of the server list restarted the timer and the sync never fired.
+  const serversKey = mediaServers.map(s => s.id).join(',');
+  const serversRef = useRef(mediaServers);
+  serversRef.current = mediaServers;
+
   useEffect(() => {
     clearInterval(intervalRef.current);
 
-    const mediaServers = servers.filter(s => s.server_type !== 'trakt' && s.is_active !== false);
+    const mediaServers = serversRef.current;
     if (syncMinutes <= 0 || mediaServers.length === 0) return;
 
     const doSync = async () => {
@@ -53,5 +60,5 @@ export function useAutoSync() {
 
     intervalRef.current = setInterval(doSync, syncMinutes * 60 * 1000);
     return () => clearInterval(intervalRef.current);
-  }, [syncMinutes, servers, queryClient]);
+  }, [syncMinutes, serversKey, queryClient]);
 }
