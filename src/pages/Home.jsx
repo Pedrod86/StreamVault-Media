@@ -31,7 +31,7 @@ export default function Home() {
       <div className="pb-20">
         <HomeSearchBar />
 
-        <div className="px-4 -mt-2 mb-1 flex items-center">
+        <div className="px-4 mt-4 mb-1 flex items-center">
           <VpnStatusBadge />
         </div>
 
