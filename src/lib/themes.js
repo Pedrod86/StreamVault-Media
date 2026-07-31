@@ -2,27 +2,9 @@
 // `bg` (optional) recolours the whole background/surface palette, not just accents.
 export const THEMES = [
   { label: '⚡ Cyberpunk',      primary: '300 100% 55%', accent: '57 100% 50%',  preview: ['#cc00ff', '#ffee00'], cyberpunk: true },
-  { label: '🔥 Neon Inferno',   primary: '0 100% 60%',   accent: '30 100% 55%',  preview: ['#ff1a1a', '#ff8800'] },
-  { label: '🌊 Neon Ocean',     primary: '195 100% 50%', accent: '240 100% 65%', preview: ['#00d4ff', '#4040ff'] },
-  { label: '☢️ Neon Toxic',     primary: '120 100% 50%', accent: '75 100% 50%',  preview: ['#00ff00', '#aaff00'] },
-  { label: '🌸 Neon Sakura',    primary: '320 100% 65%', accent: '280 100% 65%', preview: ['#ff40b0', '#c040ff'] },
-  { label: '🌅 Neon Sunrise',   primary: '45 100% 55%',  accent: '15 100% 58%',  preview: ['#ffcc00', '#ff5500'] },
-
-  // ── Themes that also recolour the background ──
-  { label: '🌌 Midnight Blue',  primary: '217 91% 60%',  accent: '199 89% 55%',  preview: ['#3b82f6', '#22b8e6'], bg: { h: 222, s: 60 } },
-  { label: '🌲 Deep Forest',    primary: '142 71% 45%',  accent: '160 84% 45%',  preview: ['#22c55e', '#12d39a'], bg: { h: 150, s: 35 } },
-  { label: '👑 Royal Purple',   primary: '271 81% 66%',  accent: '291 70% 60%',  preview: ['#a855f7', '#cc44dd'], bg: { h: 265, s: 45 } },
-  { label: '🩸 Crimson Dark',   primary: '0 84% 60%',    accent: '350 80% 55%',  preview: ['#ef4444', '#e6315e'], bg: { h: 350, s: 40 } },
-  { label: '🪨 Slate Mono',     primary: '210 20% 75%',  accent: '210 16% 60%',  preview: ['#b0bac5', '#8a96a3'], bg: { h: 215, s: 16 } },
-  { label: '⬛ OLED Black',     primary: '210 40% 96%',  accent: '199 89% 55%',  preview: ['#f0f4f8', '#22b8e6'], bg: { h: 0, s: 0, oled: true } },
   { label: '🎬 Plex',          primary: '41 89% 48%',   accent: '38 95% 60%',   preview: ['#e5a00d', '#f5b942'], bg: { h: 0, s: 0 } },
-  { label: '🧊 Glass Dark',    primary: '199 90% 62%',  accent: '210 80% 70%',  preview: ['#38bdf8', '#7dd3fc'], bg: { h: 220, s: 30 }, glass: true },
-
-  // ── Server themes ──
-  { label: '🟠 Orange',        primary: '25 95% 55%',   accent: '38 95% 55%',   preview: ['#f97316', '#f5a623'], bg: { h: 24, s: 35 } },
+  { label: '🌌 Blue',         primary: '217 91% 60%',  accent: '199 89% 55%',  preview: ['#3b82f6', '#22b8e6'], bg: { h: 222, s: 60 } },
   { label: '🟢 Green',         primary: '142 71% 45%',  accent: '160 84% 45%',  preview: ['#22c55e', '#12d39a'], bg: { h: 145, s: 30 } },
-  { label: '🔴 Red',           primary: '0 84% 60%',    accent: '10 85% 58%',   preview: ['#ef4444', '#f0603a'], bg: { h: 0, s: 45 } },
-  { label: '🟡 Golden',        primary: '45 95% 52%',   accent: '38 95% 58%',   preview: ['#f5c518', '#f5b942'], bg: { h: 43, s: 40 } },
 ];
 
 export function applyTheme(primary, accent, cyberpunk = false, bg = null, glass = false) {
