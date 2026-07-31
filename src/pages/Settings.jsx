@@ -5,6 +5,7 @@ import { fetchServerLibrary } from '@/lib/serverSync';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
 import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay, Download, ArrowUpCircle, PackageCheck, Info, Mail, Heart, Cloud } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -334,6 +335,7 @@ export default function Settings() {
 
   const [selectedTheme, setSelectedTheme] = useState(0);
   const [syncInterval, setSyncInterval] = useState('0');
+  const [lastInterval, setLastInterval] = useState('60');
   const [savedTheme, setSavedTheme] = useState(false);
   const [savedSync, setSavedSync] = useState(false);
   // Init guard — load the saved interval from the DB only once, so a background
@@ -363,7 +365,9 @@ export default function Settings() {
     // Only seed the interval from the DB the first time settings load,
     // so refetches after navigating back don't reset the dropdown to "Disabled".
     if (!syncLoadedRef.current) {
-      setSyncInterval(String(settings.sync_interval_minutes ?? 0));
+      const val = String(settings.sync_interval_minutes ?? 0);
+      setSyncInterval(val);
+      setLastInterval(val === '0' ? '60' : val);
       syncLoadedRef.current = true;
     }
   }, [settings]);
@@ -543,29 +547,43 @@ export default function Settings() {
         {/* Auto-Sync Interval */}
         <p className="text-xs text-muted-foreground -mt-2">Automatically sync all media servers in the background.</p>
 
-        <div>
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-foreground">Sync every</Label>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-              {INTERVALS.find(i => i.value === parseInt(syncInterval))?.label || `${syncInterval} min`}
-            </span>
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-secondary">
+          <div className="min-w-0">
+            <Label className="text-sm text-foreground">Background Auto-Sync</Label>
+            <p className="text-[11px] text-muted-foreground">Keep your movies & shows updated automatically.</p>
           </div>
-          <Select value={syncInterval} onValueChange={setSyncInterval}>
-            <SelectTrigger className="mt-1 bg-secondary border-border h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border">
-              {INTERVALS.map(opt => (
-                <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {syncInterval !== '0' && (
+          <Switch
+            checked={syncInterval !== '0'}
+            onCheckedChange={(checked) => {
+              if (checked) setSyncInterval(lastInterval || '60');
+              else { setLastInterval(syncInterval !== '0' ? syncInterval : lastInterval); setSyncInterval('0'); }
+            }}
+          />
+        </div>
+
+        {syncInterval !== '0' && (
+          <div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm text-foreground">Sync every</Label>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                {INTERVALS.find(i => i.value === parseInt(syncInterval))?.label || `${syncInterval} min`}
+              </span>
+            </div>
+            <Select value={syncInterval} onValueChange={(v) => { setSyncInterval(v); setLastInterval(v); }}>
+              <SelectTrigger className="mt-1 bg-background border-border h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {INTERVALS.filter(o => o.value !== 0).map(opt => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-primary mt-1.5">
               ✓ All media servers will sync every {INTERVALS.find(i => i.value === parseInt(syncInterval))?.label.toLowerCase().replace('every ', '')}
             </p>
-          )}
-        </div>
+          </div>
+        )}
         <Button
           className="w-full h-10 rounded-xl font-semibold bg-primary hover:bg-primary/90 gap-2"
           onClick={() => saveSyncMutation.mutate()}
