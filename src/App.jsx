@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -56,8 +56,14 @@ const AuthenticatedApp = () => {
   // Auto-refetch stale data when the network reconnects
   useReconnectRefetch();
 
+  // Track the router location so this component re-renders on navigation.
+  // Reading window.location.pathname directly meant that after redirecting to
+  // /login this component never re-rendered, so it kept returning <Navigate>
+  // and the app sat on the boot splash forever (Android TV WebView).
+  const location = useLocation();
+
   // On auth/login pages, never block with a spinner — always let them render
-  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(window.location.pathname);
+  const isAuthRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
 
   if (!isAuthRoute && (isLoadingPublicSettings || isLoadingAuth)) {
     return <BootScreen />;

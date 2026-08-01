@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-    }, 11000);
+    }, 6000);
 
     return () => clearTimeout(failsafe);
   }, []);
