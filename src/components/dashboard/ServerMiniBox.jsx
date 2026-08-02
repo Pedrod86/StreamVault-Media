@@ -31,10 +31,20 @@ export default function ServerMiniBox({ server }) {
   useEffect(() => {
     if (!s?.path) return;
     let cancelled = false;
-    const base = (server.server_url || '').trim().replace(/\/$/, '');
+    let base = (server.server_url || '').trim();
+    if (base && !/^https?:\/\//i.test(base)) base = 'http://' + base;
+    base = base.replace(/\/$/, '');
     if (!base) { setOnline(false); return; }
-    fetch(`${base}${s.path}`, { signal: AbortSignal.timeout(6000) })
-      .then(r => { if (!cancelled) setOnline(r.ok); })
+
+    const token = server.plex_token || server.api_token || '';
+    const url = server.server_type === 'plex'
+      ? `${base}/identity?X-Plex-Token=${encodeURIComponent(token)}`
+      : `${base}${s.path}`;
+
+    // Ping via the backend proxy — a direct browser fetch is blocked by CORS
+    // (and mixed content) on Plex/Jellyfin, falsely reporting them offline.
+    base44.functions.invoke('mediaProxy', { url })
+      .then(res => { if (!cancelled) setOnline(!!res.data?.ok); })
       .catch(() => { if (!cancelled) setOnline(false); });
     return () => { cancelled = true; };
   }, [server.id]);
