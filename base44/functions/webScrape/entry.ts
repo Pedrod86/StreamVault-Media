@@ -58,14 +58,20 @@ export default async function (req) {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,*/*',
+          'Accept-Language': 'en-GB,en;q=0.9',
+          'Referer': pageUrl.origin + '/',
         },
+        redirect: 'follow',
       });
     } catch (e) {
-      return Response.json({ error: `Could not reach that page: ${e.message}` }, { status: 502 });
+      return Response.json({ error: `Could not reach that page: ${e.message}` }, { status: 200 });
     }
-    if (!res.ok) return Response.json({ error: `Page returned ${res.status}` }, { status: 502 });
-
+    // Many sites answer bots with 403/503 but still return usable HTML — parse
+    // it anyway, and only report a failure if nothing playable comes out.
     const html = await res.text();
+    if (!res.ok && !html) {
+      return Response.json({ error: `Page returned ${res.status}` }, { status: 200 });
+    }
     const pageTitle = (html.match(TITLE_RE)?.[1] || pageUrl.hostname).trim();
 
     const seen = new Set<string>();

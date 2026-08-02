@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
       setAuthChecked(true);
-    }, 6000);
+    }, 2500);
 
     return () => clearTimeout(failsafe);
   }, []);
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
         // Hard timeout so a stalled request can never block boot past the splash.
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 5000);
+        const timer = setTimeout(() => controller.abort(), 2500);
         let resp;
         try {
           resp = await fetch(settingsUrl, { headers, signal: controller.signal });
