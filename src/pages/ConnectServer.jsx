@@ -29,9 +29,9 @@ const SERVERS = [
     bg: 'bg-yellow-500/10 border-yellow-500/30',
     text: 'text-yellow-400',
     description: 'Connect your Plex Media Server',
-    tokenUrl: 'https://www.plex.tv/claim/',
+    tokenUrl: 'https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/',
     tokenLabel: 'Plex Token',
-    tokenHelp: 'Find your token at plex.tv/claim or in Plex Web → Settings → Account',
+    tokenHelp: 'Use your X-Plex-Token (Plex Web → play any item → ⋮ → Get Info → View XML, then copy X-Plex-Token from the address bar). A "claim-…" code from plex.tv/claim will NOT work.',
   },
   {
     id: 'emby',
@@ -661,8 +661,34 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
     });
   };
 
-  const handleToken = (e) => {
+  const [tokenError, setTokenError] = useState('');
+
+  const handleToken = async (e) => {
     e.preventDefault();
+    setTokenError('');
+
+    // Plex: verify the token before saving. A "claim-…" code from plex.tv/claim
+    // is not an auth token and always comes back as 401/403.
+    if (server.id === 'plex') {
+      if (/^claim-/i.test(token.trim())) {
+        setTokenError('That\'s a claim code, not an auth token. Follow the link below to get your X-Plex-Token.');
+        return;
+      }
+      const base = url.replace(/\/$/, '');
+      const res = await base44.functions.invoke('mediaProxy', {
+        url: `${base}/library/sections?X-Plex-Token=${encodeURIComponent(token.trim())}`,
+      }).catch(() => null);
+      const status = res?.data?.status;
+      if (status === 401 || status === 403) {
+        setTokenError('Plex rejected this token (403). Make sure it\'s the X-Plex-Token from your own server, not a claim code.');
+        return;
+      }
+      if (!res?.data?.ok) {
+        setTokenError(`Could not reach your Plex server at ${base}. Check the URL includes the port (default 32400).`);
+        return;
+      }
+    }
+
     onSave({
       server_url: url,
       local_url: localUrl || undefined,
@@ -812,6 +838,12 @@ function ServerForm({ server, onBack, onSave, isSaving }) {
                   <ExternalLink className="w-3 h-3" /> How to get your {server.tokenLabel}
                 </a>
               </div>
+              {tokenError && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive leading-relaxed">
+                  <p className="font-semibold mb-1">Connection failed</p>
+                  <p>{tokenError}</p>
+                </div>
+              )}
               <Button type="submit" className={`w-full h-11 rounded-xl font-semibold bg-gradient-to-r ${server.color} text-white border-0`} disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : `Connect to ${server.name}`}
               </Button>
