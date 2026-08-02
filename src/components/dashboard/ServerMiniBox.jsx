@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 
 const STYLES = {
+  emby:     { label: 'Emby',     text: 'text-green-400',  chip: 'from-green-400 to-emerald-600', border: 'border-green-500/30',  bg: 'from-green-500/15 via-emerald-600/10 to-green-500/5', icon: Server, path: '/System/Info/Public' },
   plex:     { label: 'Plex',     text: 'text-yellow-400', chip: 'from-yellow-400 to-amber-600', border: 'border-yellow-500/30', bg: 'from-yellow-500/15 via-amber-600/10 to-yellow-500/5', icon: Server, path: '/identity' },
   jellyfin: { label: 'Jellyfin', text: 'text-purple-400', chip: 'from-purple-400 to-fuchsia-600', border: 'border-purple-500/30', bg: 'from-purple-500/15 via-fuchsia-600/10 to-purple-500/5', icon: Server, path: '/System/Info/Public' },
   torbox:   { label: 'TorBox',   text: 'text-sky-400',    chip: 'from-sky-400 to-blue-600',    border: 'border-sky-500/30',    bg: 'from-sky-500/15 via-blue-600/10 to-sky-500/5',       icon: Cloud,  path: null },
