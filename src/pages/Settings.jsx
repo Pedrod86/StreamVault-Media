@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
-import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay, Download, ArrowUpCircle, PackageCheck, Info, Mail, Heart, Cloud } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, Palette, Server, Clock, Save, Trash2, ShieldAlert, Tv2, Radio, Plug, FlaskConical, Zap, LayoutGrid, History, Film, Baby, Sparkles, Clapperboard, MonitorPlay, Download, ArrowUpCircle, PackageCheck, Info, Mail, Heart, Cloud, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import DeleteAccountDialog from '@/components/layout/DeleteAccountDialog';
 import ApiKeysSection from '@/components/settings/ApiKeysSection';
@@ -691,6 +691,13 @@ export default function Settings() {
             <div>
               <p className="text-sm font-medium text-foreground">TorBox</p>
               <p className="text-[11px] text-muted-foreground">Sync cloud downloads</p>
+            </div>
+          </Link>
+          <Link to="/web-stream" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">
+            <Globe className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Web Streams</p>
+              <p className="text-[11px] text-muted-foreground">Scrape & play from any link</p>
             </div>
           </Link>
           <Link to="/sync-status" className="flex items-center gap-3 p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors">

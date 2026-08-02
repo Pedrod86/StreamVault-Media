@@ -49,6 +49,7 @@ import Genres from './pages/Genres';
 import StudioView from './pages/StudioView';
 import Studios from './pages/Studios';
 import TorBox from './pages/TorBox';
+import WebStream from './pages/WebStream';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -124,6 +125,7 @@ const AuthenticatedApp = () => {
           <Route path="/studio/:slug" element={<StudioView />} />
           <Route path="/studios" element={<Studios />} />
           <Route path="/torbox" element={<TorBox />} />
+          <Route path="/web-stream" element={<WebStream />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
           <Route path="/ServerDashboard" element={<ServerDashboard />} />
         </Route>
