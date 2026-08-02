@@ -126,17 +126,9 @@ export default function Login() {
         className="w-full relative bg-background"
         style={{ minHeight: '100vh', minHeight: '100dvh', padding: '64px 48px 80px' }}
       >
-        <div style={{ width: '100%', maxWidth: 460, padding: '24px', backgroundColor: 'hsl(217 33% 17%)' }}
-          className="rounded-2xl border-2 border-border shadow-2xl mx-auto shrink-0">
+        <div style={{ width: '100%', maxWidth: 460, padding: '24px', backgroundColor: 'hsl(217 24% 34%)' }}
+          className="rounded-2xl border-2 border-white/20 shadow-2xl mx-auto shrink-0">
           <div className="text-center mb-5">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <img
-                src="https://media.base44.com/images/public/69fe35055df988e0955e5c11/6a6f0ca7a_generated_image.png"
-                alt="StreamVault"
-                className="w-8 h-8 rounded-lg object-cover ring-1 ring-primary/20"
-              />
-              <span className="font-heading font-bold text-lg text-foreground">StreamVault</span>
-            </div>
             <h1 className="font-heading font-bold text-2xl text-foreground">Sign In</h1>
             <p className="text-muted-foreground text-sm mt-1">Use your remote to navigate</p>
           </div>
@@ -218,7 +210,7 @@ export default function Login() {
 
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs"><span className="px-2 text-muted-foreground" style={{ backgroundColor: 'hsl(217 33% 17%)' }}>or</span></div>
+            <div className="relative flex justify-center text-xs"><span className="px-2 text-muted-foreground" style={{ backgroundColor: 'hsl(217 24% 34%)' }}>or</span></div>
           </div>
 
           <Button
