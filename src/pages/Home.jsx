@@ -9,6 +9,7 @@ import DebridHomeRows from '../components/media/DebridHomeRows';
 import DiscoverRows from '../components/media/DiscoverRows';
 import EmbyStatsBox from '../components/dashboard/EmbyStatsBox';
 import VpnStatusBadge from '../components/flags/VpnStatusBadge';
+import ServerMiniBox from '../components/dashboard/ServerMiniBox';
 
 export default function Home() {
   const queryClient = useQueryClient();
@@ -25,6 +26,9 @@ export default function Home() {
     staleTime: 60 * 1000,
   });
   const embyServer = servers.find(s => s.server_type === 'emby' && s.is_active !== false);
+  const otherServers = servers.filter(
+    s => ['plex', 'jellyfin', 'torbox'].includes(s.server_type) && s.is_active !== false
+  );
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -35,11 +39,14 @@ export default function Home() {
           <VpnStatusBadge />
         </div>
 
-        {embyServer && (
-          <div className="mt-4">
-            <EmbyStatsBox serverId={embyServer.id} />
-          </div>
-        )}
+        <div className="mt-4 space-y-3">
+          {embyServer && <EmbyStatsBox serverId={embyServer.id} />}
+          {otherServers.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {otherServers.map(s => <ServerMiniBox key={s.id} server={s} />)}
+            </div>
+          )}
+        </div>
 
         {embyServer && (
           <div className="mt-4">

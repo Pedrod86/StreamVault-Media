@@ -9,25 +9,25 @@ import { Button } from '@/components/ui/button';
 function EmbyLogo({ className = '' }) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-        <Server className="w-5 h-5 text-white" />
+      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+        <Server className="w-4 h-4 text-white" />
       </div>
-      <span className="font-heading font-extrabold text-lg tracking-tight text-green-400">Emby</span>
+      <span className="font-heading font-extrabold text-base tracking-tight text-green-400">Emby</span>
     </div>
   );
 }
 
 function StatTile({ icon: Icon, label, value, accent }) {
   return (
-    <div className="rounded-xl bg-black/25 border border-white/5 px-3 py-2.5 flex items-center gap-2.5">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent}`}>
-        <Icon className="w-4 h-4" />
+    <div className="rounded-lg bg-black/25 border border-white/5 px-2 py-1.5 flex items-center gap-2">
+      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${accent}`}>
+        <Icon className="w-3.5 h-3.5" />
       </div>
       <div className="min-w-0">
-        <p className="font-heading font-bold text-base leading-none text-foreground">
+        <p className="font-heading font-bold text-sm leading-none text-foreground">
           {value === null ? <Loader2 className="w-3.5 h-3.5 animate-spin text-green-400/70" /> : value}
         </p>
-        <p className="text-[11px] text-muted-foreground mt-1 truncate">{label}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{label}</p>
       </div>
     </div>
   );
@@ -91,13 +91,13 @@ export default function EmbyStatsBox({ serverId }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="mt-4 mx-auto"
+      className="mx-auto"
     >
       <motion.div
         initial={{ scale: 0.98 }}
         animate={{ scale: 1 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-500/15 via-emerald-600/10 to-green-500/5 p-5 shadow-lg shadow-emerald-500/10"
+        className="relative overflow-hidden rounded-2xl border border-green-500/30 bg-gradient-to-br from-green-500/15 via-emerald-600/10 to-green-500/5 p-3.5 shadow-lg shadow-emerald-500/10"
       >
         {/* Animated green glow sweep */}
         <motion.div
@@ -109,7 +109,7 @@ export default function EmbyStatsBox({ serverId }) {
         />
 
         {/* Header */}
-        <div className="relative flex items-center justify-between gap-3 mb-4">
+        <div className="relative flex items-center justify-between gap-3 mb-2.5">
           <EmbyLogo />
           <div className="flex items-center gap-2">
             <div className={`flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full ${
@@ -136,12 +136,12 @@ export default function EmbyStatsBox({ serverId }) {
         </div>
 
         {/* Server name */}
-        <p className="relative text-xs text-muted-foreground mb-3 truncate">
+        <p className="relative text-[11px] text-muted-foreground mb-2 truncate">
           {server?.server_name || 'Emby Server'}
         </p>
 
         {/* Stats grid */}
-        <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-2">
           <StatTile icon={Film} label="Movies" value={fmt(data?.movies)} accent="bg-green-500/20 text-green-400" />
           <StatTile icon={Tv} label="TV Shows" value={fmt(data?.shows)} accent="bg-emerald-500/20 text-emerald-400" />
           <StatTile icon={Sparkles} label="4K Titles" value={fmt((data?.fourkMovies ?? 0) + (data?.fourkShows ?? 0))} accent="bg-lime-500/20 text-lime-400" />
