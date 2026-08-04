@@ -5,6 +5,7 @@ import {
   SkipBack, SkipForward, Settings, PictureInPicture2,
   ChevronLeft, ChevronRight, Subtitles, CheckCircle2
 } from 'lucide-react';
+import { useDiscordNowWatching } from '@/hooks/useDiscordNowWatching';
 
 function formatTime(secs) {
   const s = Math.floor(secs || 0);
@@ -56,6 +57,9 @@ export default function VideoPlayer({ src, title, poster, onClose, onProgress, s
   const [activeSub, setActiveSub] = useState(-1);
   const [codecLabel, setCodecLabel] = useState('');
   const [error, setError] = useState(null);
+
+  // Broadcast what's playing to Discord
+  useDiscordNowWatching({ title, poster });
 
   // ── Controls auto-hide ────────────────────────────────────────────────────
   const resetHideTimer = useCallback(() => {
