@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Film, Tv, Radio, Sparkles, Search, Download, Settings, LayoutGrid } from 'lucide-react';
+import { Home, Film, Tv, Radio, Sparkles, Search, Download, Settings, LayoutGrid, Library } from 'lucide-react';
 
 const LOGO_URL = 'https://media.base44.com/images/public/69fe35055df988e0955e5c11/50f25d6c4_generated_image.png';
 
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/iptv', label: 'Live TV', icon: Radio },
   { to: '/anime', label: 'Anime', icon: Sparkles },
   { to: '/genres', label: 'Genres', icon: LayoutGrid },
+  { to: '/server-libraries', label: 'Server Libraries', icon: Library },
   { to: '/search', label: 'Search', icon: Search },
   { to: '/downloads', label: 'Downloads', icon: Download },
   { to: '/settings', label: 'Settings', icon: Settings },

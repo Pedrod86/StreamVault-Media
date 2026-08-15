@@ -51,6 +51,7 @@ import Studios from './pages/Studios';
 import TorBox from './pages/TorBox';
 import WebStream from './pages/WebStream';
 import JsonImport from './pages/JsonImport';
+import ServerLibraries from './pages/ServerLibraries';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -128,6 +129,7 @@ const AuthenticatedApp = () => {
           <Route path="/torbox" element={<TorBox />} />
           <Route path="/web-stream" element={<WebStream />} />
           <Route path="/json-import" element={<JsonImport />} />
+          <Route path="/server-libraries" element={<ServerLibraries />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
           <Route path="/ServerDashboard" element={<ServerDashboard />} />
         </Route>
